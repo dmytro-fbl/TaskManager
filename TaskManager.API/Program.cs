@@ -1,3 +1,4 @@
+﻿using Npgsql;
 
 namespace TaskManager.API
 {
@@ -29,6 +30,25 @@ namespace TaskManager.API
 
 
             app.MapControllers();
+
+
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            try
+            {
+                using var connection = new NpgsqlConnection(connectionString);
+                connection.Open();
+
+                using var command = new NpgsqlCommand("SELECT 1", connection);
+                var result = command.ExecuteScalar();
+
+                Console.WriteLine($"PostgreSQL працює! Результат: {result}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Помилка підключення: {ex.Message}");
+            }
 
             app.Run();
         }
