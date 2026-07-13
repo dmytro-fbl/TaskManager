@@ -1,4 +1,5 @@
 ﻿using Npgsql;
+using TaskManager.API.Repositories;
 
 namespace TaskManager.API
 {
@@ -14,6 +15,8 @@ namespace TaskManager.API
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
 
             var app = builder.Build();
 
