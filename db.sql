@@ -564,3 +564,8 @@ create index if not exists idx_worklogs_user_id
 create index if not exists idx_worklogs_role_label_id
     on app.worklogs(role_label_id);
 
+ALTER TABLE app.users ALTER COLUMN password_hash DROP NOT NULL;
+ALTER TABLE app.users ALTER COLUMN password_salt DROP NOT NULL;
+
+ALTER TABLE app.users ADD COLUMN invite_token varchar(255) UNIQUE;
+ALTER TABLE app.users ADD COLUMN invite_expires_at timestamptz;
