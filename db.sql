@@ -1,3 +1,4 @@
+/* 
 create extension if not exists pgcrypto;
 drop schema if exists app cascade;
 create schema app;

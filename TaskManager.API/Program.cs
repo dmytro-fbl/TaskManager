@@ -17,6 +17,10 @@ namespace TaskManager.API
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            builder.Services.AddNpgsqlDataSource(connectionString);
+
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IUserServices, UserServices>();
 
@@ -37,7 +41,6 @@ namespace TaskManager.API
             app.MapControllers();
 
 
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             try
