@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Servises\" />
+    <Folder Include="Utils\" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 ﻿using Npgsql;
 using TaskManager.API.Repositories;
+using TaskManager.API.Services;
 
 namespace TaskManager.API
 {
@@ -17,6 +18,7 @@ namespace TaskManager.API
             builder.Services.AddSwaggerGen();
 
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IUserServices, UserServices>();
 
             var app = builder.Build();
 

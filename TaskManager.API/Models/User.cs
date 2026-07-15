@@ -5,8 +5,10 @@
         public Guid Id { get; set; }
         public string Name { get; set; }
         public string Email { get; set; }
-        public string PasswordHash { get; set; }
-        public string PasswordSalt { get; set; }
+        public string? PasswordHash { get; set; }
+        public string ?PasswordSalt { get; set; }
+        public string? InviteToken { get; set; }
+        public DateTimeOffset? InviteExpiresAt { get; set; }
         public string? AvatarUrl { get; set; }
         public bool IsAdmin { get; set; } = false;
         public bool IsActive { get; set; } = true;
