@@ -48,6 +48,15 @@ namespace TaskManager.API
                 });
             });
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowReact", policy =>
+                {
+                    policy.WithOrigins("http://localhost:5173")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
 
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddNpgsqlDataSource(connectionString);
@@ -82,9 +91,12 @@ namespace TaskManager.API
 
             app.UseHttpsRedirection();
 
+            app.UseCors("AllowReact");
+
             app.UseAuthentication();
 
             app.UseAuthorization();
+
 
 
             app.MapControllers();
