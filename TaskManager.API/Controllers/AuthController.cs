@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Identity.Data;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using TaskManager.API.Repositories;
+using TaskManager.API.Services;
 using TaskManager.API.Utils;
 
 namespace TaskManager.API.Controllers
@@ -10,11 +12,14 @@ namespace TaskManager.API.Controllers
     public class AuthController : Controller
     {
         private readonly IUserRepository _userRepository;
-        public AuthController(IUserRepository userRepository)
+        private readonly ITokenService _tokenService;
+        public AuthController(IUserRepository userRepository, ITokenService tokenService)
         {
             _userRepository = userRepository;
+            _tokenService = tokenService;
         }
 
+        
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
@@ -30,9 +35,17 @@ namespace TaskManager.API.Controllers
             if (!isPasswordValid)
             {
                 return BadRequest("Неправильний email або пароль");
-            } 
+            }
+            var token = _tokenService.CreateToken(user);
 
-            return Ok("Успішний вхід");
+            return Ok(new {Token = token});
+        }
+
+        [Authorize]
+        [HttpGet("profile")]
+        public IActionResult GetProfile()
+        {
+            return Ok(new {Message = "Вітаю! Перевірка токена пройшла успішно"});
         }
     }
 }
