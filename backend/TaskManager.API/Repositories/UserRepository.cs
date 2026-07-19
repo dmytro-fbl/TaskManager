@@ -62,5 +62,81 @@ namespace TaskManager.API.Repositories
 
             return null;
         }
+
+        public async Task<string> CreateInviteAsync(string email)
+        {
+            string token = Guid.NewGuid().ToString();
+
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                INSERT INTO app.users (email, name, invite_token, invite_expires_at, is_active)
+                VALUES (@Email, 'Pending', @Token, now() + interval '24 hours', false)  
+                ON CONFLICT (email)
+                DO UPDATE  SET
+                    invite_token = excluded.invite_token,
+                    invite_expires_at = excluded.invite_expires_at;                                    
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("Email", email);
+            command.Parameters.AddWithValue("Token", token);
+
+            await command.ExecuteNonQueryAsync();
+
+            return token;
+        }
+
+        public async Task<string?> GetEmailByInviteTokenAsync(string token)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT email
+                FROM app.users
+                WHERE invite_token = @Token
+                    AND invite_expires_at > now()
+                    AND password_hash IS NULL;
+                
+            ";
+
+            await using var command = new NpgsqlCommand( sql, connection);
+
+            command.Parameters.AddWithValue("Token", token);
+
+            var email = (string?)await command.ExecuteScalarAsync();
+
+            return email;
+        }
+
+        public async Task<bool> CompleteRegistrationAsync(string token, string name, string passwordHash, string passwordSalt)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                UPDATE app.users
+                SET name = @Name,
+                    password_hash = @Hash,
+                    password_salt = @Salt,
+                    invite_token = NULL,
+                    invite_expires_at = NULL,
+                    is_active = true
+                WHERE invite_token = @Token
+                    AND invite_expires_at > now();
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("Name", name);
+            command.Parameters.AddWithValue("Hash", passwordHash);
+            command.Parameters.AddWithValue("Salt", passwordSalt);
+            command.Parameters.AddWithValue("Token", token);
+
+            var result = await command.ExecuteNonQueryAsync();
+
+            return result > 0;
+        }
+
     }
 }

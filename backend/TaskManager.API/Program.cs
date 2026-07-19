@@ -2,7 +2,8 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
-using TaskManager.API.GraphQL;
+using TaskManager.API.GraphQL.Mutations;
+using TaskManager.API.GraphQL.Queries;
 using TaskManager.API.Repositories;
 using TaskManager.API.Services;
 
@@ -21,7 +22,11 @@ namespace TaskManager.API
             builder.Services
                 .AddGraphQLServer()
                 .AddQueryType<UserQuery>()
-                .AddMutationType<UserMutation>();
+                .AddMutationType<UserMutation>()
+                .AddTypeExtension<InviteMutations>()
+                .AddTypeExtension<InviteQuery>();
+
+
 
             builder.Services.AddCors(options =>
             {
