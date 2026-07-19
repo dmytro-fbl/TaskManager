@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
+using TaskManager.API.GraphQL;
 using TaskManager.API.Repositories;
 using TaskManager.API.Services;
 
@@ -16,37 +17,11 @@ namespace TaskManager.API
             // Add services to the container.
 
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen(c =>
-            {
-                c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                {
-                    Description = "Введіть JWT токен у форматі Bearer {токен}",
-                    Name = "Authorization",
-                    In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                    Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-                    Scheme = "Bearer"
-                });
 
-                c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
-                {
-                    {
-                        new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-                        {
-                            Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                            {
-                                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                                Id = "Bearer"
-                            },
-                            Scheme = "oauth2",
-                            Name = "Bearer",
-                            In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-                        },
-                        new List<string>()
-                    }
-                });
-            });
+            builder.Services
+                .AddGraphQLServer()
+                .AddQueryType<UserQuery>()
+                .AddMutationType<UserMutation>();
 
             builder.Services.AddCors(options =>
             {
@@ -79,15 +54,9 @@ namespace TaskManager.API
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IUserServices, UserServices>();
             builder.Services.AddScoped<ITokenService, TokenService>();
+            builder.Services.AddScoped<IAuthService, AuthService>();
 
             var app = builder.Build();
-
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
-            {
-                app.UseSwagger();
-                app.UseSwaggerUI();
-            }
 
             app.UseHttpsRedirection();
 
@@ -97,9 +66,8 @@ namespace TaskManager.API
 
             app.UseAuthorization();
 
-
-
-            app.MapControllers();
+            app.MapGraphQL();
+            //app.MapControllers();
 
 
 
