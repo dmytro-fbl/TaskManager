@@ -69,7 +69,10 @@ namespace TaskManager.API.Repositories
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string checkSql = "SELECT id FROM app.users WHERE email = @Email";
+
             await using var checkCommand = new NpgsqlCommand(checkSql, connection);
+
+            checkCommand.Parameters.AddWithValue("email", email);
 
             var existingUser = await checkCommand.ExecuteScalarAsync();
             if (existingUser != null)

@@ -9,7 +9,14 @@ namespace TaskManager.API.GraphQL.Mutations
         public async Task<string> GenerateInviteAsync(string email, bool isAdmin,
             [Service] IUserRepository userRepository)
         {
-            return await userRepository.GenerateInviteAsync(email, isAdmin);
+            try
+            {
+
+                return await userRepository.GenerateInviteAsync(email, isAdmin);
+            }catch (Exception ex)
+            {
+                throw new GraphQLException($"Помилка беку: {ex.Message}");
+            }
         }
 
         public async Task<bool> CompleteRegistrationAsync(string token, string name, string password,
