@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { gql } from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
 
@@ -25,6 +26,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+  const navigate = useNavigate();
+
   const [loginFunc, { loading, error }] = useMutation<LoginData, LoginVars>(LOGIN_MUTATION);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,7 +42,8 @@ export default function LoginPage() {
         const token = response.data.login.token; 
         localStorage.setItem('token', token);
         console.log("Токен отримано:", token);
-        alert('Вхід виконано!');
+        navigate ('/dashboard');
+        
       }
     } catch (err) {
       console.error("Помилка:", err);
