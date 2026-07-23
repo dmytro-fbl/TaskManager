@@ -6,10 +6,10 @@ namespace TaskManager.API.GraphQL.Mutations
     [ExtendObjectType("UserMutation")]
     public class InviteMutations
     {
-        public async Task<string> GenerateInviteAsync(string email, 
+        public async Task<string> GenerateInviteAsync(string email, bool isAdmin,
             [Service] IUserRepository userRepository)
         {
-            return await userRepository.CreateInviteAsync(email);
+            return await userRepository.GenerateInviteAsync(email, isAdmin);
         }
 
         public async Task<bool> CompleteRegistrationAsync(string token, string name, string password,
