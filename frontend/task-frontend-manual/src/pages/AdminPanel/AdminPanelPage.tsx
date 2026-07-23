@@ -2,6 +2,7 @@ import { useState } from "react";
 import { disableExperimentalFragmentVariables, gql } from "@apollo/client";
 import { useMutation } from '@apollo/client/react';
 import { GENERATE_INVITE_MUTATIONS } from '../../graphql/mutations/invateMutations';
+import ErrorMessage from "../../components/ui/ErrorMessage";
 
 interface GenerateInviteData {
     generateInvite: string;
@@ -44,55 +45,72 @@ export default function InviteUserForm() {
         }
     };
 
-    return (
-        <div style={{ padding: '20px', border: '1px solid #ccc', borderRadius: '8px', maxWidth: '400px', marginTop: '20px' }}>
-            <h3>Запросити нового користувача</h3>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div>
-                    <label> Email користувача:</label>
-                    <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '8px', marginTop: '5px', boxSizing: 'border-box' }}
-                    />
-                </div>
+   return (
+    <div className="max-w-[400px] p-6 mt-6 bg-bg-card rounded-xl shadow-md border border-gray-100">
+      <h3 className="text-xl font-bold text-text-main mb-6">
+        Запросити нового користувача
+      </h3>
+      
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        
+        {error && <ErrorMessage message={`Помилка: ${error.message}`} />}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <input
-                        type="checkbox"
-                        id="isAdmin"
-                        checked={isAdmin}
-                        onChange={(e) => setIsAdmin(e.target.checked)}
-                    />
-                    <label htmlFor="isAdmin">Надати права Адміністратора</label>
-                </div>
-
-                {error && <p style={{ color: 'red', margin: '0' }}>Помилка: {error.message}</p>}
-
-                <button type="submit" disabled={loading} style={{ padding: '10px', cursor: 'pointer' }}>
-                    {loading ? 'Генерація...' : 'Створити запрошення'}
-                </button>
-            </form>
-
-            {generatedLink && (
-                <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: '4px' }}>
-                    <p style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'bold' }}>Одноразове посилання створено:</p>
-                    <input
-                        type="text"
-                        readOnly
-                        value={generatedLink}
-                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box', marginBottom: '10px' }}
-                    />
-                    <button onClick={handleCopy} style={{ padding: '8px 12px', cursor: 'pointer', backgroundColor: '#1890ff', color: 'white', border: 'none', borderRadius: '4px' }}>
-                        Скопіювати посилання
-                    </button>
-                </div>
-            )}
+        <div>
+          <label className="block text-sm font-medium text-text-main mb-1">
+            Email користувача:
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full p-2.5 border border-gray-300 rounded-md outline-none focus:border-transparent focus:ring-2 focus:ring-primary transition"
+          />
         </div>
 
+        <div className="flex items-center gap-3 my-2">
+          <input
+            type="checkbox"
+            id="isAdmin"
+            checked={isAdmin}
+            onChange={(e) => setIsAdmin(e.target.checked)}
+            className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary cursor-pointer"
+          />
+          <label htmlFor="isAdmin" className="text-sm font-medium text-text-main cursor-pointer select-none">
+            Надати права Адміністратора
+          </label>
+        </div>
 
-    );
+        <button 
+          type="submit" 
+          disabled={loading} 
+          className="w-full p-2.5 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Генерація...' : 'Створити запрошення'}
+        </button>
+      </form>
+
+      {generatedLink && (
+        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm font-bold text-text-main mb-3">
+            Одноразове посилання створено:
+          </p>
+          <input
+            type="text"
+            readOnly
+            value={generatedLink}
+            className="w-full p-2.5 mb-3 border border-blue-200 rounded-md bg-white text-gray-700 outline-none"
+          />
+          <button 
+            onClick={handleCopy} 
+            type="button"
+            className="w-full p-2.5 bg-white border border-primary text-primary font-semibold rounded-md hover:bg-primary hover:text-white transition duration-200"
+          >
+            Скопіювати посилання
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 

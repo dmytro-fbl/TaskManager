@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { VERIFY_TOKEN_QUERY, COMPLETE_REGISTRATION_MUTATION } from '../../graphql/queries/inviteQueries';
+import ErrorMessage from '../../components/ui/ErrorMessage';
 
 interface VerifyTokenResponse {
     verifyInviteToken: string;
@@ -51,54 +52,82 @@ export default function RegisterPage() {
     };
 
     if (!token) {
-        return <div>Помилка: У посиланні немає токена реєстрації</div>;
+        return (
+            <div className="max-w-[400px] mx-auto mt-10 p-5 bg-bg-card rounded-xl shadow-md border border-gray-100">
+                <ErrorMessage message="Помилка: У посиланні немає токена реєстрації" />
+            </div>
+        );
     }
 
     if (loading) {
-        return <div>Перевіряємо посилання... Зачекайте</div>;
+        return (
+            <div className="max-w-[400px] mx-auto mt-10 p-8 bg-bg-card rounded-xl shadow-md border border-gray-100 text-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-primary mx-auto mb-4"></div>
+                <p className="text-text-muted font-medium">
+                    Перевіряємо посилання... Зачекайте
+                </p>
+            </div>
+        );
     }
 
     if (error) {
-        return <div>Помилка: Токен не дійсний або його термін дії минув</div>;
+        return (
+            <div className="max-w-[400px] mx-auto mt-10 p-5 bg-bg-card rounded-xl shadow-md border border-gray-100">
+                <ErrorMessage message="Помилка: Токен не дійсний або його термін дії минув" />
+            </div>
+        );
     }
 
 
     return (
+    <div className="max-w-[400px] mx-auto p-5 font-sans mt-10 bg-bg-card rounded-xl shadow-md border border-gray-100">
+      <h2 className="text-2xl font-bold text-center text-text-main mb-2">
+        Завершення реєстрації
+      </h2>
+      <p className="text-center text-text-muted mb-6">
+        Ваш email: <b className="text-text-main">{data?.verifyInviteToken}</b>
+      </p>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        
         <div>
-            <h1>Завершення реєстрації</h1>
-            <p>Ваш email: <b>{data?.verifyInviteToken}</b></p>
-
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Ім'я:</label>
-                    <br />
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                    />
-                </div>
-
-                <div style={{ marginTop: '10px' }}>
-                    <label>Придумайте пароль:</label>
-                    <br />
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
-
-                {submitError && (
-                    <p style={{ color: 'red' }}>Помилка: {submitError.message}</p>
-                )}
-
-                <button type="submit" disabled={isSubmitting} style={{ marginTop: '15px' }}>
-                    {isSubmitting ? 'Реєструємо...' : 'Зареєструватись'}
-                </button>
-            </form>
+          <label className="block text-sm font-medium text-text-main mb-1">
+            Ім'я:
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            className="w-full p-2.5 border border-gray-300 rounded-md outline-none focus:border-transparent focus:ring-2 focus:ring-primary transition"
+          />
         </div>
-    );
+
+        <div>
+          <label className="block text-sm font-medium text-text-main mb-1">
+            Придумайте пароль:
+          </label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            className="w-full p-2.5 border border-gray-300 rounded-md outline-none focus:border-transparent focus:ring-2 focus:ring-primary transition"
+          />
+        </div>
+
+        {submitError && (
+          <ErrorMessage message={`Помилка: ${submitError.message}`} />
+        )}
+
+        <button 
+          type="submit" 
+          disabled={isSubmitting} 
+          className="w-full p-2.5 mt-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {isSubmitting ? 'Реєструємо...' : 'Зареєструватись'}
+        </button>
+      </form>
+    </div>
+  );
 }

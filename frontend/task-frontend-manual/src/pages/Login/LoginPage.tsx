@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { gql } from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
+import ErrorMessage from '../../components/ui/ErrorMessage';
 
 interface LoginData {
   login: {
@@ -39,46 +40,54 @@ export default function LoginPage() {
       });
 
       if (response.data) {
-        const token = response.data.login.token; 
+        const token = response.data.login.token;
         localStorage.setItem('token', token);
         console.log("Токен отримано:", token);
-        navigate ('/dashboard');
-        
+        navigate('/dashboard');
+
       }
     } catch (err) {
       console.error("Помилка:", err);
     }
   };
 
-  return (
-    <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <h2>Вхід у Task Tracker</h2>
+ return (
+    <div className="max-w-[400px] mx-auto p-5 font-sans mt-10 bg-bg-card rounded-xl shadow-md border border-gray-100">
+      <h2 className="text-2xl font-bold text-center text-text-main mb-6">
+        Вхід у Task Tracker
+      </h2>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: "column", gap: '15px' }}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        
+        {error && <ErrorMessage message={'Неправильний email або пароль'} />}
+        
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          style={{ padding: '8px' }}
+
+          className="p-2.5 border border-gray-300 rounded-md outline-none focus:border-transparent focus:ring-2 focus:ring-primary transition"
         />
-        
+
         <input
           type="password"
           placeholder="Пароль"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          style={{ padding: '8px' }}
+          className="p-2.5 border border-gray-300 rounded-md outline-none focus:border-transparent focus:ring-2 focus:ring-primary transition"
         />
 
-        {error && <div style={{ color: 'red' }}>Помилка входу</div>}
-
-        <button type="submit" disabled={loading} style={{ padding: '10px' }}>
+        <button 
+          type="submit" 
+          disabled={loading} 
+          className="p-2.5 mt-2 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
           {loading ? 'Завантаження...' : 'Увійти'}
         </button>
       </form>
     </div>
-  )
+  );
 }
