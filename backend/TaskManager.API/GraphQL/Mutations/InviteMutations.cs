@@ -21,7 +21,7 @@ namespace TaskManager.API.GraphQL.Mutations
 
             if(!result)
             {
-                throw new GraphQLException("Недійсний токен");
+                throw new GraphQLException("Недійсний токен запрошення або його термін дії минув");
             }
             return true;
         }

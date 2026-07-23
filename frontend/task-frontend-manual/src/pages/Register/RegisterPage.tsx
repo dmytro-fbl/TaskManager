@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client/react';
-import { VERIFY_TOKEN_QUERY, COMPLETE_REGISTRATION_MUTATION } from './graphql/inviteQueries';
+import { VERIFY_TOKEN_QUERY, COMPLETE_REGISTRATION_MUTATION } from '../../graphql/queries/inviteQueries';
 
 interface VerifyTokenResponse {
     verifyInviteToken: string;
@@ -14,6 +14,8 @@ interface CompleteRegResponse {
 export default function RegisterPage() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get('token');
+
+    const navigate = useNavigate();
 
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
@@ -41,7 +43,7 @@ export default function RegisterPage() {
             });
 
             if (result.data?.completeRegistration) {
-                setIsSuccess(true);
+                navigate('/login');
             }
         } catch (err) {
             console.error("Помилка при реєстрації", err);
