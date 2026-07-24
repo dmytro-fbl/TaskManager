@@ -3,6 +3,7 @@ import { disableExperimentalFragmentVariables, gql } from "@apollo/client";
 import { useMutation } from '@apollo/client/react';
 import { GENERATE_INVITE_MUTATIONS } from '../../graphql/mutations/invateMutations';
 import ErrorMessage from "../../components/ui/ErrorMessage";
+import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
 interface GenerateInviteData {
     generateInvite: string;
@@ -53,7 +54,7 @@ export default function InviteUserForm() {
       
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         
-        {error && <ErrorMessage message={`Помилка: ${error.message}`} />}
+        {error && <ErrorMessage message={getFriendlyErrorMessage(error)} />}
 
         <div>
           <label className="block text-sm font-medium text-text-main mb-1">

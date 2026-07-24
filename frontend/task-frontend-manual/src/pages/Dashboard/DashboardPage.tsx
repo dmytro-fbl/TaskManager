@@ -10,7 +10,6 @@ export default function DashboardPage(){
 
    return (
     <div className="flex flex-col gap-6">
-      {/* Вітальна картка */}
       <div className="bg-bg-card p-8 rounded-2xl shadow-sm border border-gray-100">
         <h2 className="text-2xl font-bold text-text-main mb-2">
           Вітаємо в системі 

@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { VERIFY_TOKEN_QUERY, COMPLETE_REGISTRATION_MUTATION } from '../../graphql/queries/inviteQueries';
 import ErrorMessage from '../../components/ui/ErrorMessage';
+import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 
 interface VerifyTokenResponse {
     verifyInviteToken: string;
@@ -20,7 +21,9 @@ export default function RegisterPage() {
 
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
-    const [isSuccess, setIsSuccess] = useState(false);
+    const [confirmPassword, setConfirmPassowrd] = useState('');
+
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     const { data, loading, error } = useQuery<VerifyTokenResponse>(VERIFY_TOKEN_QUERY, {
         variables: { token: token },
@@ -33,6 +36,22 @@ export default function RegisterPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setValidationError(null);
+
+        if(name.trim().length < 2){
+          setValidationError("Імя повинно містити щонайменше 2 символи");
+          return;
+        }
+
+        if(password.length < 6){
+          setValidationError("Пароль повинен містити щонайменше 6 символів");
+          return;
+        }
+
+        if(password != confirmPassword){
+          setValidationError("Паролі не співпадають!");
+          return;
+        }
 
         try {
             const result = await completeReg({
@@ -90,6 +109,9 @@ export default function RegisterPage() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         
+        {validationError && <ErrorMessage message={validationError}/>}
+        {submitError && <ErrorMessage message={getFriendlyErrorMessage(submitError)}/>}
+
         <div>
           <label className="block text-sm font-medium text-text-main mb-1">
             Ім'я:
@@ -116,9 +138,18 @@ export default function RegisterPage() {
           />
         </div>
 
-        {submitError && (
-          <ErrorMessage message={`Помилка: ${submitError.message}`} />
-        )}
+        <div>
+          <label className="block text-sm font-medium text-text-main mb-1">
+            Повторіть пароль:
+          </label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassowrd(e.target.value)}
+            required
+            className="w-full p-2.5 border border-gray-300 rounded-md outline-none focus:border-transparent focus:ring-2 focus:ring-primary transition"
+          />
+        </div>
 
         <button 
           type="submit" 

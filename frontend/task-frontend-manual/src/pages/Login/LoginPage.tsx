@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { gql } from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
 import ErrorMessage from '../../components/ui/ErrorMessage';
+import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 
 interface LoginData {
   login: {
@@ -59,7 +60,7 @@ export default function LoginPage() {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         
-        {error && <ErrorMessage message={'Неправильний email або пароль'} />}
+        {error && <ErrorMessage message={getFriendlyErrorMessage(error)} />}
         
         <input
           type="email"
