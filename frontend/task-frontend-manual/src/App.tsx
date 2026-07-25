@@ -1,86 +1,29 @@
-import { useState } from 'react';
-import { gql } from '@apollo/client';
-import { useMutation } from '@apollo/client/react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import LoginPage from './pages/Login/LoginPage';
+import RegisterPage from './pages/Register/RegisterPage';
+import DashboardPage from './pages/Dashboard/DashboardPage';
+import AdminPanelPage from './pages/AdminPanel/AdminPanelPage'
+import MainLayout from './components/layout/MainLayout';
+import Adminguard from './components/layout/AdminGuard';
 
-// 1. Описуємо, що ми очікуємо отримати від сервера
-interface LoginData {
-  login: {
-    token: string;
-  };
-}
-
-// 2. Описуємо, які змінні ми відправляємо
-interface LoginVars {
-  email: string;
-  password: string;
-}
-
-const LOGIN_MUTATION = gql`
-  mutation Login($email: String!, $password: String!) {
-    login(request: { email: $email, password: $password }) {
-      token
-    }
-  }
-`;
-
-function App() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  // 3. Передаємо наші типи в хук у кутових дужках: <Дані, Змінні>
-  const [loginFunc, { loading, error }] = useMutation<LoginData, LoginVars>(LOGIN_MUTATION);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      const response = await loginFunc({
-        variables: { email, password }
-      });
-
-      // 4. Додаємо перевірку if (response.data), щоб TS точно знав, що дані прийшли
-      if (response.data) {
-        const token = response.data.login.token; // Тепер тут працює автодоповнення і немає помилок!
-        localStorage.setItem('token', token);
-        console.log("Токен отримано:", token);
-        alert('Вхід виконано!');
-      }
-    } catch (err) {
-      console.error("Помилка:", err);
-    }
-  };
-
+export default function App() {
   return (
-    <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto', fontFamily: 'sans-serif' }}>
-      <h2>Вхід у Task Tracker</h2>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: "column", gap: '15px' }}>
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ padding: '8px' }}
-        />
-        
-        <input
-          type="password"
-          placeholder="Пароль"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={{ padding: '8px' }}
-        />
+        <Route path="/register" element={<RegisterPage />} />
 
-        {error && <div style={{ color: 'red' }}>Помилка входу</div>}
+        <Route element={<MainLayout />}>
+          <Route path='/dashboard' element={<DashboardPage />} />
 
-        <button type="submit" disabled={loading} style={{ padding: '10px' }}>
-          {loading ? 'Завантаження...' : 'Увійти'}
-        </button>
-      </form>
-    </div>
-  )
+          <Route element={<Adminguard />}>
+            <Route path='/adminPanel' element={<AdminPanelPage />} />
+          </Route>
+        </Route>
+
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
-
-export default App;

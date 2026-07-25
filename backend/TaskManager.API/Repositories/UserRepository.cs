@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using Microsoft.AspNetCore.Components.Web;
+using Npgsql;
 using TaskManager.API.Models;
 
 namespace TaskManager.API.Repositories
@@ -57,6 +58,123 @@ namespace TaskManager.API.Repositories
 
                     PasswordSalt = reader.IsDBNull(reader.GetOrdinal("password_salt"))
                     ? null : reader.GetString(reader.GetOrdinal("password_salt"))
+                };
+            }
+
+            return null;
+        }
+
+        public async Task<string> GenerateInviteAsync(string email, bool isAdmin)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string checkSql = "SELECT id FROM app.users WHERE email = @Email";
+
+            await using var checkCommand = new NpgsqlCommand(checkSql, connection);
+
+            checkCommand.Parameters.AddWithValue("email", email);
+
+            var existingUser = await checkCommand.ExecuteScalarAsync();
+            if (existingUser != null)
+            {
+                throw new GraphQLException("Користувач з таким email вже існує або отримав запрошення");
+            }
+
+            string inviteToken = Guid.NewGuid().ToString();
+
+            DateTime expiresAt = DateTime.UtcNow.AddHours(24);
+
+            const string sql = @"
+                INSERT INTO app.users (email, name, invite_token, invite_expires_at, is_active, is_admin)
+                VALUES (@Email, 'Pending User', @Token, @ExpiresAt, false, @IsAdmin)  
+                RETURNING invite_token;                               
+            ";
+
+            await using var insertCommand = new NpgsqlCommand(sql, connection);
+
+            insertCommand.Parameters.AddWithValue("Email", email);
+            insertCommand.Parameters.AddWithValue("Token", inviteToken);
+            insertCommand.Parameters.AddWithValue("ExpiresAt", expiresAt);
+            insertCommand.Parameters.AddWithValue("IsAdmin", isAdmin);
+
+            var resultToken = (string?)await insertCommand.ExecuteScalarAsync();
+
+            return resultToken ?? throw new GraphQLException("Помилка генерації токена");
+        }
+
+        public async Task<string?> GetEmailByInviteTokenAsync(string token)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT email
+                FROM app.users
+                WHERE invite_token = @Token
+                    AND invite_expires_at > now()
+                    AND password_hash IS NULL;
+                
+            ";
+
+            await using var command = new NpgsqlCommand( sql, connection);
+
+            command.Parameters.AddWithValue("Token", token);
+
+            var email = (string?)await command.ExecuteScalarAsync();
+
+            return email;
+        }
+
+        public async Task<bool> CompleteRegistrationAsync(string token, string name, string passwordHash, string passwordSalt)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                UPDATE app.users
+                SET name = @Name,
+                    password_hash = @Hash,
+                    password_salt = @Salt,
+                    invite_token = NULL,
+                    invite_expires_at = NULL,
+                    is_active = true
+                WHERE invite_token = @Token
+                    AND invite_expires_at > now();
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("Name", name);
+            command.Parameters.AddWithValue("Hash", passwordHash);
+            command.Parameters.AddWithValue("Salt", passwordSalt);
+            command.Parameters.AddWithValue("Token", token);
+
+            var result = await command.ExecuteNonQueryAsync();
+
+            return result > 0;
+        }
+
+        public async Task<User?> GetUserByIdAsync(Guid id)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT id, name, is_admin
+                FROM app.users
+                WHERE id = @id
+                ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("id", id);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new User
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
+                    IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin"))
                 };
             }
 

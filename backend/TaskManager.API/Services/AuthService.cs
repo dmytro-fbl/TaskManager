@@ -20,14 +20,14 @@ namespace TaskManager.API.Services
         {
             var user = await _userRepository.GetUserByEmail(request.Email);
 
-            if (user == null)
-            {
-                throw new Exception("Неправильний email або пароль");
-            }
-
             if ((user == null || user.PasswordHash == null || user.PasswordSalt == null))
             {
-                throw new Exception("Неправильний email або пароль");
+                throw new GraphQLException("Неправильний email або пароль");
+            }
+
+            if (!user.IsActive)
+            {
+                throw new GraphQLException("Ваш аккаунт не активовано");
             }
 
             bool isPasswordValid = PasswordHasher.VerifyPasswordHash(

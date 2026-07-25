@@ -1,4 +1,4 @@
-﻿namespace TaskManager.API.GraphQL
+﻿namespace TaskManager.API.GraphQL.Queries
 {
     public class UserQuery
     {

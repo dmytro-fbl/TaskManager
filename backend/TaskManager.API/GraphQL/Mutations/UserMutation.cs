@@ -3,7 +3,7 @@ using TaskManager.API.Repositories;
 using TaskManager.API.Services;
 using TaskManager.API.Utils;
 
-namespace TaskManager.API.GraphQL
+namespace TaskManager.API.GraphQL.Mutations
 {
     public class UserMutation
     {
