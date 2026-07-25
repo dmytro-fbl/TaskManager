@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
+import { Check } from "lucide-react";
 
 export interface GetMeData {
   me: {
@@ -36,8 +37,8 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Логотип / Назва */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">
-            
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white">
+            <Check className="w-5 h-5" />
           </div>
           <span className="text-xl font-bold text-text-main">TaskTracker</span>
         </div>

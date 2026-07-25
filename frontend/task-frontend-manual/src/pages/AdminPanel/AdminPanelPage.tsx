@@ -5,55 +5,77 @@ import { GENERATE_INVITE_MUTATIONS } from '../../graphql/mutations/invateMutatio
 import ErrorMessage from "../../components/ui/ErrorMessage";
 import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
+import AdminSidebar from './components/AdminSidebar';
+import UsersTab from "./components/tabs/UserTab";
+
 interface GenerateInviteData {
-    generateInvite: string;
+  generateInvite: string;
 }
 
 export default function InviteUserForm() {
-    const [email, setEmail] = useState('');
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [generatedLink, setGeneratelink] = useState<string | null>(null);
 
-    const [generateInvite, { loading, error }] = useMutation<GenerateInviteData>(GENERATE_INVITE_MUTATIONS);
+const [activeTab, setActiveTab] = useState<'users' | 'invites' | 'projects'>('users');
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setGeneratelink(null);
+  return (
+    <div className="flex min-h-[calc(100vh-4rem)] bg-bg-main">
+      <AdminSidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
+        <div className="max-w-7xl mx-auto space-y-6">
 
-        try {
-            const response = await generateInvite({
-                variables: { email, isAdmin }
-            });
+          {/* Динамічне відображення активного блоку */}
+          {activeTab === 'users' && <UsersTab />}
+          {activeTab === 'invites' && <div>Вкладка запрошень (в розробці...)</div>}
+          {activeTab === 'projects' && <div>Вкладка проєктів (в розробці...)</div>}
+
+        </div>
+      </main>
+    </div>
+  );
+
+  const [email, setEmail] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [generatedLink, setGeneratelink] = useState<string | null>(null);
+
+  const [generateInvite, { loading, error }] = useMutation<GenerateInviteData>(GENERATE_INVITE_MUTATIONS);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGeneratelink(null);
+
+    try {
+      const response = await generateInvite({
+        variables: { email, isAdmin }
+      });
 
 
-            if (response.data?.generateInvite) {
-                const token = response.data.generateInvite;
+      if (response.data?.generateInvite) {
+        const token = response.data.generateInvite;
 
-                const link = `${window.location.origin}/register?token=${token}`;
-                setGeneratelink(link);
-                setIsAdmin(false);
-                setEmail('');
-            }
-        } catch (err) {
-            console.error("Помилка генерації запрошення: ", err);
-        }
-    };
+        const link = `${window.location.origin}/register?token=${token}`;
+        setGeneratelink(link);
+        setIsAdmin(false);
+        setEmail('');
+      }
+    } catch (err) {
+      console.error("Помилка генерації запрошення: ", err);
+    }
+  };
 
-    const handleCopy = () => {
-        if (generatedLink) {
-            navigator.clipboard.writeText(generatedLink);
-            alert('Посилання скопійовано в буфер обміну');
-        }
-    };
+  const handleCopy = () => {
+    if (generatedLink) {
+      navigator.clipboard.writeText(generatedLink);
+      alert('Посилання скопійовано в буфер обміну');
+    }
+  };
 
-   return (
+  return (
     <div className="max-w-[400px] p-6 mt-6 bg-bg-card rounded-xl shadow-md border border-gray-100">
       <h3 className="text-xl font-bold text-text-main mb-6">
         Запросити нового користувача
       </h3>
-      
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        
+
         {error && <ErrorMessage message={getFriendlyErrorMessage(error)} />}
 
         <div>
@@ -82,9 +104,9 @@ export default function InviteUserForm() {
           </label>
         </div>
 
-        <button 
-          type="submit" 
-          disabled={loading} 
+        <button
+          type="submit"
+          disabled={loading}
           className="w-full p-2.5 bg-primary text-white font-semibold rounded-md hover:bg-primary-hover transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Генерація...' : 'Створити запрошення'}
@@ -102,8 +124,8 @@ export default function InviteUserForm() {
             value={generatedLink}
             className="w-full p-2.5 mb-3 border border-blue-200 rounded-md bg-white text-gray-700 outline-none"
           />
-          <button 
-            onClick={handleCopy} 
+          <button
+            onClick={handleCopy}
             type="button"
             className="w-full p-2.5 bg-white border border-primary text-primary font-semibold rounded-md hover:bg-primary hover:text-white transition duration-200"
           >
