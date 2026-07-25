@@ -31,6 +31,37 @@ namespace TaskManager.API.Repositories
             await command.ExecuteNonQueryAsync();
         }
 
+        public async Task<IEnumerable<User>> GetAllUsersAsync()
+        {
+            var users = new List<User>();
+
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT id, name, email, is_admin, is_active, created_at
+                FROM app.users
+                ORDER BY created_at DESC;
+            
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                users.Add(new User
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
+                    Email = reader.GetString(reader.GetOrdinal("email")),
+                    IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin")),
+                    IsActive = reader.GetBoolean(reader.GetOrdinal("is_active")),
+                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
+                });
+            }
+            return users;
+        }
+
         public async Task<User?> GetUserByEmail(string email)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();

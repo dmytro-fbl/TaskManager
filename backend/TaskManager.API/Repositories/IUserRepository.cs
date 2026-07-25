@@ -9,6 +9,8 @@ namespace TaskManager.API.Repositories
         Task<User?> GetUserByIdAsync(Guid id);
         Task Create(User user);
 
+        Task<IEnumerable<User>> GetAllUsersAsync();
+
         Task<string> GenerateInviteAsync(string email, bool isAdmin);
         Task<string?> GetEmailByInviteTokenAsync(string token);
         Task<bool> CompleteRegistrationAsync(string token, string name, string passwordHash, string passwordSalt);
