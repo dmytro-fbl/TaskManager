@@ -1,7 +1,30 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { gql } from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
+
+export interface GetMeData {
+  me: {
+    id: string;
+    name: string;
+    isAdmin: boolean;
+  } | null;
+}
+
+export const GET_ME_QUERY = gql`
+  query GetMe {
+    me{
+      id
+      name
+      isAdmin    
+    }
+  }
+`;
 
 export default function Header() {
   const navigate = useNavigate();
+
+  const { data } = useQuery<GetMeData>(GET_ME_QUERY);
+
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -14,7 +37,7 @@ export default function Header() {
         {/* Логотип / Назва */}
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">
-            ✓
+            
           </div>
           <span className="text-xl font-bold text-text-main">TaskTracker</span>
         </div>
@@ -24,13 +47,16 @@ export default function Header() {
           <Link to="/dashboard" className="text-text-main hover:text-primary font-medium transition">
             Дашборд
           </Link>
-          <Link to="/adminPanel" className="text-text-main hover:text-primary font-medium transition">
-            Адмін-панель
-          </Link>
+
+          {data?.me?.isAdmin && (
+            <Link to="/adminPanel" className="text-text-main hover:text-primary font-medium transition">
+              Адмін-панель
+            </Link>
+          )}
+
         </nav>
 
-        {/* Кнопка виходу */}
-        <button 
+        <button
           onClick={handleLogout}
           className="px-4 py-2 text-sm font-medium text-danger hover:bg-danger-bg rounded-md transition"
         >

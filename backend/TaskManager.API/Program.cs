@@ -16,11 +16,13 @@ namespace TaskManager.API
             var builder = WebApplication.CreateBuilder(args);
 
             // Add services to the container.
+            builder.Services.AddAuthorization();
 
-            builder.Services.AddControllers();
+            //builder.Services.AddControllers();
 
             builder.Services
                 .AddGraphQLServer()
+                .AddAuthorization()
                 .AddQueryType<UserQuery>()
                 .AddMutationType<UserMutation>()
                 .AddTypeExtension<InviteMutations>()
@@ -42,6 +44,7 @@ namespace TaskManager.API
             builder.Services.AddNpgsqlDataSource(connectionString);
 
             var jwtSecretKey = builder.Configuration.GetSection("Jwt:Key").Value;
+
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -70,6 +73,7 @@ namespace TaskManager.API
             app.UseAuthentication();
 
             app.UseAuthorization();
+
 
             app.MapGraphQL();
             //app.MapControllers();

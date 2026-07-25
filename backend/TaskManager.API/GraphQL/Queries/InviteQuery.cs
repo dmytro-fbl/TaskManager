@@ -1,4 +1,7 @@
-﻿using TaskManager.API.Repositories;
+﻿using HotChocolate.Authorization;
+using TaskManager.API.Repositories;
+using TaskManager.API.Models;
+using System.Security.Claims;
 
 namespace TaskManager.API.GraphQL.Queries
 {
@@ -14,6 +17,19 @@ namespace TaskManager.API.GraphQL.Queries
             }
 
             return email;
+        }
+
+        [Authorize]
+        public async Task<User> GetMeAsync(ClaimsPrincipal claimsPrincipal, [Service] IUserRepository userRepository)
+        {
+            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if(Guid.TryParse(userIdString, out Guid userId))
+            {
+                return await userRepository.GetUserByIdAsync(userId);
+            }
+
+            throw new GraphQLException("Користувача не знайдено");
         }
     }
 }

@@ -6,6 +6,7 @@ namespace TaskManager.API.Repositories
     public interface IUserRepository
     {
         Task<User?> GetUserByEmail(string email);
+        Task<User?> GetUserByIdAsync(Guid id);
         Task Create(User user);
 
         Task<string> GenerateInviteAsync(string email, bool isAdmin);

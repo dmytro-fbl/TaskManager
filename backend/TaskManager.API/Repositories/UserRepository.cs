@@ -152,5 +152,33 @@ namespace TaskManager.API.Repositories
             return result > 0;
         }
 
+        public async Task<User?> GetUserByIdAsync(Guid id)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT id, name, is_admin
+                FROM app.users
+                WHERE id = @id
+                ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("id", id);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new User
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
+                    IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin"))
+                };
+            }
+
+            return null;
+        }
     }
 }
