@@ -219,7 +219,8 @@ namespace TaskManager.API.Repositories
 
             const string sql = @"
             UPDATE app.users
-            SET is_admin = @is_admin
+            SET is_admin = @is_admin,
+                updated_at = now()
             WHERE id = @id;
             ";
 
@@ -239,7 +240,8 @@ namespace TaskManager.API.Repositories
 
             const string sql = @"
             UPDATE app.users
-            SET is_active = @is_active
+            SET is_active = @is_active,
+                updated_at = now()
             WHERE id = @id;
             ";
 
