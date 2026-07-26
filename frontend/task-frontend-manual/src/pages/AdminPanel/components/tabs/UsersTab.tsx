@@ -1,9 +1,10 @@
 import { gql } from "@apollo/client";
-import { useQuery } from "@apollo/client/react";
-import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { useMutation, useQuery } from "@apollo/client/react";
+import { FiShield, FiLock, FiUnlock } from 'react-icons/fi';
 import { getFriendlyErrorMessage } from "../../../../utils/errorHandler";
 import User from "../../../../types/User";
 import { GET_USERS_QUERY } from "../../../../graphql/queries/userQuery";
+import { TOGGLE_USER_ROLE, TOGGLE_USER_STATUS } from "../../../../graphql/mutations/userMutations";
 
 interface GetUserData {
     users: User[];
@@ -12,9 +13,40 @@ interface GetUserData {
 
 export default function UsersTab() {
 
-    const { data, loading, error } = useQuery<GetUserData>(GET_USERS_QUERY, {
+    const { data, loading, error, refetch } = useQuery<GetUserData>(GET_USERS_QUERY, {
         fetchPolicy: 'network-only'
     });
+
+    const [toggleRole] = useMutation(TOGGLE_USER_ROLE);
+    const [toggleStatus] = useMutation(TOGGLE_USER_STATUS);
+
+    const handleToggleRole = async (userId: string, currentIsAdmin: boolean) => {
+      const actionText = currentIsAdmin ? 'забрати права адміністатора у' : 'надати права адміністратора';
+      if(!window.confirm(`Ви впевнені, що хочте ${actionText} цього користувача?`)) return;
+
+      try{
+          await toggleRole({
+            variables: {userId, isAdmin: !currentIsAdmin}
+          });
+          refetch();
+      }catch (err: any){
+        alert(getFriendlyErrorMessage(err));
+      }
+    }
+
+    const handleToggleStatus = async (userId: string, currentIsActive: boolean) => {
+    const actionText = currentIsActive ? 'заблокувати' : 'розблокувати';
+    if (!window.confirm(`Ви впевнені, що хочете ${actionText} цього користувача?`)) return;
+
+    try {
+      await toggleStatus({ 
+        variables: { userId, isActive: !currentIsActive } 
+      });
+      refetch(); 
+    } catch (err: any) {
+      alert(getFriendlyErrorMessage(err));
+    }
+  };
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -56,7 +88,6 @@ export default function UsersTab() {
         </span>
       </div>
 
-      {/* Сама таблиця */}
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -102,26 +133,36 @@ export default function UsersTab() {
                   {formatDate(user.createdAt)}
                 </td>
                 <td className="p-4 text-right">
-                  {/* Кнопки дій (поки що заглушки) */}
-                  <button 
-                    title="Редагувати"
-                    className="text-text-muted hover:text-primary bg-gray-50 hover:bg-blue-50 p-2 rounded-md transition-colors"
+
+                  {/* Кнопки дій */}
+                 <button 
+                    onClick={() => handleToggleRole(user.id, user.isAdmin)}
+                    title={user.isAdmin ? "Забрати права адміна" : "Зробити адміном"}
+                    className={`p-2 rounded-md transition-colors ${
+                      user.isAdmin 
+                        ? 'text-purple-600 bg-purple-50 hover:bg-purple-100' 
+                        : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'
+                    }`}
                   >
-                    <FiEdit2 size={18} />
+                    <FiShield size={18} />
                   </button>
                   
-                  {/* Кнопка видалення/блокування */}
+                  {/* Кнопка статусу */}
                   <button 
-                    title="Заблокувати"
-                    className="text-text-muted hover:text-danger bg-gray-50 hover:bg-red-50 p-2 rounded-md transition-colors"
+                    onClick={() => handleToggleStatus(user.id, user.isActive)}
+                    title={user.isActive ? "Заблокувати" : "Розблокувати"}
+                    className={`p-2 rounded-md transition-colors ${
+                      user.isActive 
+                        ? 'text-gray-400 hover:text-danger hover:bg-red-50' 
+                        : 'text-danger bg-red-50 hover:bg-red-100'
+                    }`}
                   >
-                    <FiTrash2 size={18} />
+                    {user.isActive ? <FiLock size={18} /> : <FiUnlock size={18} />}
                   </button>
                 </td>
               </tr>
             ))}
             
-            {/* Якщо список порожній */}
             {data?.users.length === 0 && (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-text-muted">
