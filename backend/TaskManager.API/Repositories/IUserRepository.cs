@@ -8,6 +8,8 @@ namespace TaskManager.API.Repositories
         Task<User?> GetUserByEmail(string email);
         Task<User?> GetUserByIdAsync(Guid id);
         Task Create(User user);
+        Task<bool> UpdateUserRoleAsync(Guid userId, bool isAdmin);
+        Task<bool> UpdateUserStatusAsync(Guid userId, bool isActive);
 
         Task<IEnumerable<User>> GetAllUsersAsync();
 
