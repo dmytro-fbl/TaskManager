@@ -16,5 +16,7 @@ namespace TaskManager.API.Repositories
         Task<string> GenerateInviteAsync(string email, bool isAdmin);
         Task<string?> GetEmailByInviteTokenAsync(string token);
         Task<bool> CompleteRegistrationAsync(string token, string name, string passwordHash, string passwordSalt);
+
+        Task<bool> UpdateRefreshTokenAsync(Guid userId, string? refreshToken, DateTime? expiryTime);
     }
 }
