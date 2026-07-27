@@ -100,7 +100,7 @@ namespace TaskManager.API.Repositories
                     ? null : reader.GetString(reader.GetOrdinal("password_hash")),
 
                     PasswordSalt = reader.IsDBNull(reader.GetOrdinal("password_salt"))
-                    ? null : reader.GetString(reader.GetOrdinal("password_salt"))
+                    ? null : reader.GetString(reader.GetOrdinal("password_salt")),
 
                     RefreshToken = reader.IsDBNull(reader.GetOrdinal("refresh_token"))
                     ? null : reader.GetString(reader.GetOrdinal("refresh_token")),
