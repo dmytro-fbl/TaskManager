@@ -30,6 +30,37 @@ namespace TaskManager.API.Repositories
 
             await command.ExecuteNonQueryAsync();
         }
+              
+        public async Task<IEnumerable<User>> GetAllUsersAsync()
+        {
+            var users = new List<User>();
+
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT id, name, email, is_admin, is_active, created_at
+                FROM app.users
+                ORDER BY created_at DESC;
+            
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                users.Add(new User
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
+                    Email = reader.GetString(reader.GetOrdinal("email")),
+                    IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin")),
+                    IsActive = reader.GetBoolean(reader.GetOrdinal("is_active")),
+                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
+                });
+            }
+            return users;
+        }
 
         public async Task<User?> GetUserByEmail(string email)
         {
@@ -157,7 +188,7 @@ namespace TaskManager.API.Repositories
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                SELECT id, name, is_admin
+                SELECT id, name, is_admin, email
                 FROM app.users
                 WHERE id = @id
                 ";
@@ -174,11 +205,53 @@ namespace TaskManager.API.Repositories
                 {
                     Id = reader.GetGuid(reader.GetOrdinal("id")),
                     Name = reader.GetString(reader.GetOrdinal("name")),
-                    IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin"))
+                    IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin")),
+                    Email = reader.GetString(reader.GetOrdinal("email"))
                 };
             }
 
             return null;
+        }
+
+        public async Task<bool> UpdateUserRoleAsync(Guid userId, bool isAdmin)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+            UPDATE app.users
+            SET is_admin = @is_admin,
+                updated_at = now()
+            WHERE id = @id;
+            ";
+
+            await using var command = new NpgsqlCommand( sql, connection);
+
+            command.Parameters.AddWithValue("is_admin", isAdmin);
+            command.Parameters.AddWithValue("id", userId);
+
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
+
+        }
+
+        public async Task<bool> UpdateUserStatusAsync(Guid userId, bool isActive)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+            UPDATE app.users
+            SET is_active = @is_active,
+                updated_at = now()
+            WHERE id = @id;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("is_active", isActive);
+            command.Parameters.AddWithValue("id", userId);
+
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
         }
     }
 }
