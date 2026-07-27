@@ -18,7 +18,8 @@ namespace TaskManager.API.GraphQL.Mutations
             _tokenService = tokenService;
         }
 
-        public async Task<AuthPayload> Login(LoginRequest request, [Service] IAuthService authService)
+        public async Task<AuthPayload> Login(LoginRequest request, 
+            [Service] IAuthService authService)
         {
             return await authService.LoginAsync(request);
         }
