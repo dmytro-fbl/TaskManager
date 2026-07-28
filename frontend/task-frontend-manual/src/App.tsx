@@ -5,6 +5,7 @@ import DashboardPage from './pages/Dashboard/DashboardPage';
 import AdminPanelPage from './pages/AdminPanel/AdminPanelPage'
 import MainLayout from './components/layout/MainLayout';
 import Adminguard from './components/layout/AdminGuard';
+import ProtectedRoute from './components/ProtectedRoute';
 
 export default function App() {
   return (
@@ -14,11 +15,13 @@ export default function App() {
 
         <Route path="/register" element={<RegisterPage />} />
 
-        <Route element={<MainLayout />}>
-          <Route path='/dashboard' element={<DashboardPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<MainLayout />}>
+            <Route path='/dashboard' element={<DashboardPage />} />
 
-          <Route element={<Adminguard />}>
-            <Route path='/adminPanel' element={<AdminPanelPage />} />
+            <Route element={<Adminguard />}>
+              <Route path='/adminPanel' element={<AdminPanelPage />} />
+            </Route>
           </Route>
         </Route>
 

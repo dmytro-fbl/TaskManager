@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { gql } from '@apollo/client';
-import { useQuery } from '@apollo/client/react';
+import { useQuery, useMutation } from '@apollo/client/react';
 import { Check } from "lucide-react";
+import { LOGOUT_MUTATION } from '../../graphql/mutations/logoutMutations';
 
 export interface GetMeData {
   me: {
@@ -26,10 +27,19 @@ export default function Header() {
 
   const { data } = useQuery<GetMeData>(GET_ME_QUERY);
 
+  const [logoutMutation] = useMutation(LOGOUT_MUTATION);
+  const handleLogout = async () => {
+    try {
+      await logoutMutation();
+    } catch (err) {
+      console.error("Помилка під час виходу на сервері:", err);
+    } finally {
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userEmail');
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
+      navigate('/login');
+    }
   };
 
   return (
