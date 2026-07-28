@@ -26,6 +26,7 @@ namespace TaskManager.API
                 .AddQueryType<UserQuery>()
                 .AddMutationType<UserMutation>()
                 .AddTypeExtension<InviteMutations>()
+                .AddTypeExtension<AuthMutations>()
                 .AddTypeExtension<InviteQuery>();
 
 
