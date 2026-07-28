@@ -12,3 +12,16 @@ query Getusers{
     }
 }
 `;
+
+export const GET_PENDING_INVITES_QUERY = gql`
+query GetPendingInvites {
+    pendingInviteUsers {
+        id 
+        email
+        isAdmin
+        inviteToken
+        inviteExpiresAt
+        createdAt
+    }
+}
+`
