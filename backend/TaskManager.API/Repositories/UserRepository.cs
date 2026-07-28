@@ -253,5 +253,36 @@ namespace TaskManager.API.Repositories
             var rowsAffected = await command.ExecuteNonQueryAsync();
             return rowsAffected > 0;
         }
+
+        public async Task<IEnumerable<User>> GetUsersPendingInviteAsync()
+        {
+            var users = new List<User>();
+
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT is_active = false
+                FROM app.users
+                ORDER BY created_at DESC;
+            ";
+
+            await using var command = new NpgsqlCommand( sql, connection);
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                users.Add(new User
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Email = reader.GetString(reader.GetOrdinal("email")),
+                    IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin")),
+                    IsActive = reader.GetBoolean(reader.GetOrdinal("is_active")),
+                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
+                    InviteToken = reader.GetString(reader.GetOrdinal("invite_token")),
+                    InviteExpiresAt = reader.GetDateTime(reader.GetOrdinal("invite_expires_at"))                    
+                });
+            }
+            return users;
+        }
     }
 }
