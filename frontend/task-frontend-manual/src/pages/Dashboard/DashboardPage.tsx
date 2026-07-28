@@ -1,18 +1,15 @@
 import { useNavigate } from "react-router-dom";
+import { useMutation } from '@apollo/client/react';
+import { LOGOUT_MUTATION } from "../../graphql/mutations/logoutMutations";
 
-export default function DashboardPage(){
-    const navigate = useNavigate();
+export default function DashboardPage() {
+ 
 
-    const handleLogout = () => {
-        localStorage.removeItem('token');
-        navigate('/login');
-    };
-
-   return (
+  return (
     <div className="flex flex-col gap-6">
       <div className="bg-bg-card p-8 rounded-2xl shadow-sm border border-gray-100">
         <h2 className="text-2xl font-bold text-text-main mb-2">
-          Вітаємо в системі 
+          Вітаємо в системі
         </h2>
         <p className="text-text-muted text-lg">
           Ви успішно увійшли в систему. Тут незабаром з'являться ваші проєкти та завдання.

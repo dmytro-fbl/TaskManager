@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { UNSAFE_createClientRoutesWithHMRRevalidationOptOut, useNavigate } from 'react-router-dom';
 import { gql } from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
 import ErrorMessage from '../../components/ui/ErrorMessage';
@@ -7,7 +7,8 @@ import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 
 interface LoginData {
   login: {
-    token: string;
+    accessToken: string;
+    refreshToken: string;
   };
 }
 
@@ -19,7 +20,9 @@ interface LoginVars {
 const LOGIN_MUTATION = gql`
   mutation Login($email: String!, $password: String!) {
     login(request: { email: $email, password: $password }) {
-      token
+      accessToken,
+      refreshToken
+
     }
   }
 `;
@@ -41,11 +44,14 @@ export default function LoginPage() {
       });
 
       if (response.data) {
-        const token = response.data.login.token;
-        localStorage.setItem('token', token);
-        console.log("Токен отримано:", token);
-        navigate('/dashboard');
 
+        const { accessToken, refreshToken} = response.data.login;
+
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('refreshToken', refreshToken);
+        localStorage.setItem('userEmail', email);
+        console.log('Токени успішно отримано');
+        navigate('/dashboard');
       }
     } catch (err) {
       console.error("Помилка:", err);

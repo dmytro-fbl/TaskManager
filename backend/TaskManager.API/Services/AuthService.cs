@@ -40,11 +40,17 @@ namespace TaskManager.API.Services
                 throw new GraphQLException("Неправильний email або пароль");
             }
 
-            string token = _tokenService.CreateToken(user);
+            var accessToken = _tokenService.CreateToken(user);
+            var refreshToken = _tokenService.GenerateRefreshToken();
+
+            var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+
+            await _userRepository.UpdateRefreshTokenAsync(user.Id, refreshToken, refreshTokenExpiry);
 
             return new AuthPayload
             {
-                Token = token
+                AccessToken = accessToken,
+                RefreshToken = refreshToken
             };
         }
     }

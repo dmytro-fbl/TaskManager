@@ -27,5 +27,25 @@ namespace TaskManager.API.GraphQL.Queries
             throw new GraphQLException("Неавторизований запит");
         }
 
+        [Authorize]
+        public async Task<IEnumerable<User>> GetPendingInviteUsersAsync(ClaimsPrincipal claimsPrincipal,
+            [Service] IUserRepository userRepository)
+        {
+            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (Guid.TryParse(userIdString, out var userId))
+            {
+                var currentUser = await userRepository.GetUserByIdAsync(userId);
+
+                if(currentUser == null || !currentUser.IsAdmin)
+                {
+                    throw new GraphQLException("Доступ заборонено.");
+                }
+                return await userRepository.GetUsersPendingInviteAsync();
+            }
+            throw new GraphQLException("Неавторизований запит");
+        }
+
+
     }
 }

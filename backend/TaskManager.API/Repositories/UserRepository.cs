@@ -15,10 +15,15 @@ namespace TaskManager.API.Repositories
         public async Task Create(User user)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
+            const string sql = @"
+                INSERT INTO app.users (name, email,  invite_token, invite_expires_at, is_admin, is_active, 
+                                        refresh_token, refresh_token_expiry_time) 
+                VALUES (@name, @email, @invite_token, @invite_expires_at, @is_admin, @is_active,
+                        @refresh_token, @refresh_token_expiry_time) 
+)
+            ";
 
-            await using var command = new NpgsqlCommand(
-                "INSERT INTO app.users (name, email,  invite_token, invite_expires_at, is_admin, is_active) " +
-                "VALUES (@name, @email, @invite_token, @invite_expires_at, @is_admin, @is_active)", connection);
+            await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("name", user.Name);
             command.Parameters.AddWithValue("email", user.Email);
@@ -28,9 +33,12 @@ namespace TaskManager.API.Repositories
             command.Parameters.AddWithValue("invite_token", user.InviteToken ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("invite_expires_at", user.InviteExpiresAt ?? (object)DBNull.Value);
 
+            command.Parameters.AddWithValue("refresh_token", user.RefreshToken ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("refresh_token_expiry_time", user.RefreshTokenExpiryTime ?? (object)DBNull.Value);
+
             await command.ExecuteNonQueryAsync();
         }
-              
+
         public async Task<IEnumerable<User>> GetAllUsersAsync()
         {
             var users = new List<User>();
@@ -66,9 +74,13 @@ namespace TaskManager.API.Repositories
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
-            await using var command = new NpgsqlCommand(
-                "SELECT id, name, email, password_hash, password_salt, is_admin, is_active " +
-                "FROM app.users WHERE email = @email", connection);
+            const string sql = @"
+                SELECT id, name, email, password_hash, password_salt, is_admin, is_active,
+                        refresh_token, refresh_token_expiry_time
+                FROM app.users WHERE email = @email
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("email", email);
 
@@ -88,7 +100,13 @@ namespace TaskManager.API.Repositories
                     ? null : reader.GetString(reader.GetOrdinal("password_hash")),
 
                     PasswordSalt = reader.IsDBNull(reader.GetOrdinal("password_salt"))
-                    ? null : reader.GetString(reader.GetOrdinal("password_salt"))
+                    ? null : reader.GetString(reader.GetOrdinal("password_salt")),
+
+                    RefreshToken = reader.IsDBNull(reader.GetOrdinal("refresh_token"))
+                    ? null : reader.GetString(reader.GetOrdinal("refresh_token")),
+
+                    RefreshTokenExpiryTime = reader.IsDBNull(reader.GetOrdinal("refresh_token_expiry_time"))
+                    ? null : reader.GetFieldValue<DateTime>(reader.GetOrdinal("refresh_token_expiry_time"))
                 };
             }
 
@@ -146,7 +164,7 @@ namespace TaskManager.API.Repositories
                 
             ";
 
-            await using var command = new NpgsqlCommand( sql, connection);
+            await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("Token", token);
 
@@ -188,7 +206,7 @@ namespace TaskManager.API.Repositories
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                SELECT id, name, is_admin, email
+                SELECT id, name, is_admin, email, refresh_token, refresh_token_expiry_time
                 FROM app.users
                 WHERE id = @id
                 ";
@@ -206,7 +224,15 @@ namespace TaskManager.API.Repositories
                     Id = reader.GetGuid(reader.GetOrdinal("id")),
                     Name = reader.GetString(reader.GetOrdinal("name")),
                     IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin")),
-                    Email = reader.GetString(reader.GetOrdinal("email"))
+                    Email = reader.GetString(reader.GetOrdinal("email")),
+                    RefreshToken = reader.IsDBNull(reader.GetOrdinal("refresh_token"))
+                    ? null
+                    : reader.GetString(reader.GetOrdinal("refresh_token")),
+
+                    RefreshTokenExpiryTime = reader.IsDBNull(reader.GetOrdinal("refresh_token_expiry_time"))
+                    ? null
+                    : reader.GetFieldValue<DateTime>(reader.GetOrdinal("refresh_token_expiry_time"))
+
                 };
             }
 
@@ -224,7 +250,7 @@ namespace TaskManager.API.Repositories
             WHERE id = @id;
             ";
 
-            await using var command = new NpgsqlCommand( sql, connection);
+            await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("is_admin", isAdmin);
             command.Parameters.AddWithValue("id", userId);
@@ -252,6 +278,58 @@ namespace TaskManager.API.Repositories
 
             var rowsAffected = await command.ExecuteNonQueryAsync();
             return rowsAffected > 0;
+        }
+
+        public async Task<bool> UpdateRefreshTokenAsync(Guid userId, string? refreshToken, DateTime? expiryTime)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                UPDATE app.users
+                SET refresh_token = @refresh_token,
+                    refresh_token_expiry_time = @refresh_token_expiry_time
+                WHERE id = @id;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("id", userId);
+            command.Parameters.AddWithValue("refresh_token", refreshToken ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("refresh_token_expiry_time", expiryTime ?? (object)DBNull.Value);
+
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
+        }
+
+        public async Task<IEnumerable<User>> GetUsersPendingInviteAsync()
+        {
+            var users = new List<User>();
+
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT is_active = false
+                FROM app.users
+                ORDER BY created_at DESC;
+            ";
+
+            await using var command = new NpgsqlCommand( sql, connection);
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                users.Add(new User
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Email = reader.GetString(reader.GetOrdinal("email")),
+                    IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin")),
+                    IsActive = reader.GetBoolean(reader.GetOrdinal("is_active")),
+                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
+                    InviteToken = reader.GetString(reader.GetOrdinal("invite_token")),
+                    InviteExpiresAt = reader.GetDateTime(reader.GetOrdinal("invite_expires_at"))                    
+                });
+            }
+            return users;
         }
     }
 }
