@@ -25,7 +25,9 @@ export const GET_ME_QUERY = gql`
 export default function Header() {
   const navigate = useNavigate();
 
-  const { data } = useQuery<GetMeData>(GET_ME_QUERY);
+  const { data } = useQuery<GetMeData>(GET_ME_QUERY,{
+    fetchPolicy: 'network-only'
+    });
 
   const [logoutMutation] = useMutation(LOGOUT_MUTATION);
   const handleLogout = async () => {
@@ -38,7 +40,7 @@ export default function Header() {
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('userEmail');
 
-      navigate('/login');
+      window.location.href = '/login';
     }
   };
 

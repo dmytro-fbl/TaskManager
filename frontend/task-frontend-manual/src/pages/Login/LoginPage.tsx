@@ -51,7 +51,7 @@ export default function LoginPage() {
         localStorage.setItem('refreshToken', refreshToken);
         localStorage.setItem('userEmail', email);
         console.log('Токени успішно отримано');
-        navigate('/dashboard');
+        window.location.href = '/dashboard';
       }
     } catch (err) {
       console.error("Помилка:", err);
