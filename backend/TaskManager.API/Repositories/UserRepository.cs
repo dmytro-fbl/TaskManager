@@ -308,8 +308,9 @@ namespace TaskManager.API.Repositories
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                SELECT is_active = false
+                SELECT id, email, is_admin, is_active, created_at, invite_token, invite_expires_at
                 FROM app.users
+                WHERE invite_token IS NOT NULL AND password_hash IS NULL
                 ORDER BY created_at DESC;
             ";
 
@@ -324,9 +325,13 @@ namespace TaskManager.API.Repositories
                     Email = reader.GetString(reader.GetOrdinal("email")),
                     IsAdmin = reader.GetBoolean(reader.GetOrdinal("is_admin")),
                     IsActive = reader.GetBoolean(reader.GetOrdinal("is_active")),
-                    CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at")),
-                    InviteToken = reader.GetString(reader.GetOrdinal("invite_token")),
-                    InviteExpiresAt = reader.GetDateTime(reader.GetOrdinal("invite_expires_at"))                    
+                    CreatedAt = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("created_at")),
+                    InviteToken = reader.IsDBNull(reader.GetOrdinal("invite_token"))
+                        ? null 
+                        : reader.GetString(reader.GetOrdinal("invite_token")),
+                    InviteExpiresAt = reader.IsDBNull(reader.GetOrdinal("invite_expires_at")) 
+                        ? null
+                        : reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("invite_expires_at")),
                 });
             }
             return users;
