@@ -5,7 +5,7 @@ using TaskManager.API.Services;
 
 namespace TaskManager.API.GraphQL.Mutations
 {
-    [ExtendObjectType("UserMutation")]
+    [ExtendObjectType(OperationTypeNames.Mutation)]
     public class AuthMutations
     {
         public async Task<AuthPayload> Login(LoginRequest request,
