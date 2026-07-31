@@ -5,7 +5,7 @@ using System.Security.Claims;
 
 namespace TaskManager.API.GraphQL.Queries
 {
-    [ExtendObjectType("UserQuery")]
+    [ExtendObjectType(OperationTypeNames.Query)]
     public class InviteQuery
     {
         public async Task<string?> VerifyInviteTokenAsync(string  token, [Service] IUserRepository userRepository)

@@ -4,7 +4,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 {
     public interface IProjectRepository
     {
-        Task<Guid> CreateAsync(Project project);
+        Task<Guid> CreateProjectWithOwnerAsync(Project project);
         Task<Project?> GetProjectByIdAsync(Guid projectId);
     }
 }
