@@ -34,7 +34,7 @@ namespace TaskManager.API.Services
             {
                 Subject = new ClaimsIdentity(claims),
 
-                Expires = DateTime.UtcNow.AddMinutes(15),
+                Expires = DateTime.UtcNow.AddSeconds(5),
                 SigningCredentials = creds
             };
 
