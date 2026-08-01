@@ -2,7 +2,7 @@ import { useState } from "react";
 import AdminSidebar from './components/AdminSidebar';
 import UsersTab from "./components/tabs/UsersTab";
 import PendingInviteTab from "./components/tabs/PendingInviteTab";
-import { CreateProjectForm } from "../Dashboard/projects/CreateProjectForm";
+import { CreateProjectForm } from "../Dashboard/Project/CreateProjectForm";
 
 interface GenerateInviteData {
   generateInvite: string;
