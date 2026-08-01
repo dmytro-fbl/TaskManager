@@ -2,6 +2,7 @@ import { useState } from "react";
 import AdminSidebar from './components/AdminSidebar';
 import UsersTab from "./components/tabs/UsersTab";
 import PendingInviteTab from "./components/tabs/PendingInviteTab";
+import { CreateProjectForm } from "../Dashboard/projects/CreateProjectForm";
 
 interface GenerateInviteData {
   generateInvite: string;
@@ -20,7 +21,7 @@ const [activeTab, setActiveTab] = useState<'users' | 'invites' | 'projects'>('us
           {/* Динамічне відображення активного блоку */}
           {activeTab === 'users' && <UsersTab />}
           {activeTab === 'invites' && <PendingInviteTab/>}
-          {activeTab === 'projects' && <div>Вкладка проєктів (в розробці...)</div>}
+          {activeTab === 'projects' && <CreateProjectForm />}
 
         </div>
       </main>
