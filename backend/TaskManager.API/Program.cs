@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using TaskManager.API.GraphQL.Mutations;
+using TaskManager.API.GraphQL.Mutations.Projects;
 using TaskManager.API.GraphQL.Queries;
 using TaskManager.API.Repositories;
+using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Services;
 
 namespace TaskManager.API
@@ -23,11 +25,19 @@ namespace TaskManager.API
             builder.Services
                 .AddGraphQLServer()
                 .AddAuthorization()
-                .AddQueryType<UserQuery>()
-                .AddMutationType<UserMutation>()
+                .AddQueryType<Query>()
+                .AddMutationType<Mutation>()
+                
+                .AddTypeExtension<UserQuery>()
+                .AddTypeExtension<UserMutation>()
+
+                .AddTypeExtension<InviteQuery>()
                 .AddTypeExtension<InviteMutations>()
+
                 .AddTypeExtension<AuthMutations>()
-                .AddTypeExtension<InviteQuery>();
+
+                .AddTypeExtension<ProjectMutations>()
+                ;
 
 
 
@@ -61,6 +71,7 @@ namespace TaskManager.API
                 });
 
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
             builder.Services.AddScoped<IUserServices, UserServices>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();

@@ -570,3 +570,19 @@ ALTER TABLE app.users ALTER COLUMN password_salt DROP NOT NULL;
 
 ALTER TABLE app.users ADD COLUMN invite_token varchar(255) UNIQUE;
 ALTER TABLE app.users ADD COLUMN invite_expires_at timestamptz;
+
+INSERT INTO app.users (id, name, email, password_hash, password_salt, is_admin, is_active, created_at)
+VALUES (
+    gen_random_uuid(),
+    'Super Admin',
+    'admin@tasktracker.com',
+    'rgRCcJg3+P06EZ3bIztZUJ/93nweS/eh3C0y3nv6PC4HnG5/J3e/RvUMAw9Sv9mn3MQsFD7yInM3zRO0k+SQzQ==',
+    'wuzoHsbXmUUgJis9B2dbjL2ZTKS6dtjeWnRW2HUtf5/BbbzEJgaQqNwbYkw+xVgALKasZx7sxgWCNb0Wxmq1Pa3ViyI2QQi8RmOY9DiOnhYHFdWMf+Jzs6m1EXw2KZDhx7TITF6hUVCuUUb3Ffv9z8PGCYqAHfMNs7LK2nzGyRc=',
+    true,
+    true,
+    now()
+);
+
+ALTER TABLE app.users
+ADD COLUMN refresh_token TEXT,
+ADD COLUMN refresh_token_expiry_time TIMESTAMPTZ;

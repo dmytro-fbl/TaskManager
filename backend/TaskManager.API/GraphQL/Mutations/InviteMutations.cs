@@ -3,7 +3,7 @@ using TaskManager.API.Utils;
 
 namespace TaskManager.API.GraphQL.Mutations
 {
-    [ExtendObjectType("UserMutation")]
+    [ExtendObjectType(OperationTypeNames.Mutation)]
     public class InviteMutations
     {
         public async Task<string> GenerateInviteAsync(string email, bool isAdmin,

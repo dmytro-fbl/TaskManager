@@ -5,6 +5,7 @@ using TaskManager.API.Repositories;
 
 namespace TaskManager.API.GraphQL.Queries
 {
+    [ExtendObjectType(OperationTypeNames.Query)]
     public class UserQuery
     {
         [Authorize]

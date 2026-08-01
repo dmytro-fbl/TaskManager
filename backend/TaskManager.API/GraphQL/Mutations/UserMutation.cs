@@ -7,6 +7,7 @@ using TaskManager.API.Utils;
 
 namespace TaskManager.API.GraphQL.Mutations
 {
+    [ExtendObjectType(OperationTypeNames.Mutation)]
     public class UserMutation
     {
         private readonly IUserRepository _userRepository;

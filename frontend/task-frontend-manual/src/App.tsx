@@ -6,6 +6,7 @@ import AdminPanelPage from './pages/AdminPanel/AdminPanelPage'
 import MainLayout from './components/layout/MainLayout';
 import Adminguard from './components/layout/AdminGuard';
 import ProtectedRoute from './components/ProtectedRoute';
+import { ProjectsPage } from './pages/Dashboard/Project/ProjectPage';
 
 export default function App() {
   return (
@@ -18,7 +19,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path='/dashboard' element={<DashboardPage />} />
-
+            <Route path='/projects' element={<ProjectsPage/>}/>
             <Route element={<Adminguard />}>
               <Route path='/adminPanel' element={<AdminPanelPage />} />
             </Route>
