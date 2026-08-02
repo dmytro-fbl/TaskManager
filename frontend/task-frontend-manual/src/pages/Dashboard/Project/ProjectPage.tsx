@@ -1,9 +1,10 @@
-import React, {useState} from "react";
-import {useQuery} from "@apollo/client/react";
-import {gql} from "@apollo/client";
-import {CreateProjectForm} from "./CreateProjectForm";
+import React, { useState } from "react";
+import { useQuery } from "@apollo/client/react";
+import { gql } from "@apollo/client";
+import { useNavigate } from "react-router-dom"; // ДОДАНО ІМПОРТ
+import { CreateProjectForm } from "./CreateProjectForm";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
-import {getFriendlyErrorMessage} from "../../../utils/errorHandler";
+import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 
 interface Project {
     id: string;
@@ -35,6 +36,9 @@ const GET_PROJECTS = gql`
 
 export const ProjectsPage: React.FC = () => {
     const [showCreateForm, setShowCreateForm] = useState(false);
+    
+    // Ініціалізуємо хук навігації
+    const navigate = useNavigate();
 
     const { data, loading, error, refetch } = useQuery<{ myProjects: Project[] }>(GET_PROJECTS, {
         fetchPolicy: "network-only",
@@ -92,14 +96,15 @@ export const ProjectsPage: React.FC = () => {
                     {projects.map((project) => (
                         <div
                             key={project.id}
+                            onClick={() => navigate(`/projects/${project.id}`)}
                             className="p-6 transition-shadow bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md cursor-pointer"
                         >
                             <div className="flex items-start justify-between mb-4">
                                 <h3 className="text-xl font-semibold text-gray-800">{project.title}</h3>
                                 <span
                                     className="px-2 py-1 text-xs font-medium text-green-700 bg-green-100 rounded-full">
-                  {project.status}
-                </span>
+                                    {project.status}
+                                </span>
                             </div>
 
                             <p className="mb-4 text-sm text-gray-600 line-clamp-2">
@@ -110,12 +115,12 @@ export const ProjectsPage: React.FC = () => {
 
                             <div
                                 className="flex items-center justify-between text-sm text-gray-500 border-t pt-4 border-gray-50">
-                <span>
-                  Бюджет: {project.budgetCap != null ? `$${project.budgetCap}` : "Не вказано"}
-                </span>
+                                <span>
+                                  Бюджет: {project.budgetCap != null ? `$${project.budgetCap}` : "Не вказано"}
+                                </span>
                                 <span className="font-medium text-blue-600 hover:text-blue-800">
-                  Відкрити &rarr;
-                </span>
+                                  Відкрити &rarr;
+                                </span>
                             </div>
                         </div>
                     ))}

@@ -1,90 +1,91 @@
 import React, { useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { INVITE_EXISTING_USER_TO_PROJECT } from "../../../graphql/mutations/projectInviteMutations";
+import { ADD_USER_TO_PROJECT } from "../../../graphql/mutations/projectInviteMutations"; 
 import ErrorMessage from "../../../components/ui/ErrorMessage";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
+import { FiUserPlus } from "react-icons/fi";
 
-interface InviteExistingUserFormProps {
+interface AddUserToProjectFormProps {
     projectId: string;
+    onUserAdded: () => void; 
 }
 
-export const InviteExistingUserForm: React.FC<InviteExistingUserFormProps> = ({ projectId }) => {
+export const AddUserToProjectForm: React.FC<AddUserToProjectFormProps> = ({ projectId, onUserAdded }) => {
     const [email, setEmail] = useState("");
     const [projectRole, setProjectRole] = useState<"manager" | "contributor">("contributor");
-    const [roleLabelId, setRoleLabelId] = useState<string | null>(null);
     const [localError, setLocalError] = useState<string | null>(null);
 
-    const [inviteExistingUser, { loading, error }] = useMutation(INVITE_EXISTING_USER_TO_PROJECT);
+    const [addUserDirectly, { loading, error }] = useMutation(ADD_USER_TO_PROJECT);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLocalError(null);
 
-        if (email.trim().length < 5) {
+        if (email.trim().length < 5 || !email.includes('@')) {
             setLocalError("Вкажіть коректний email.");
             return;
         }
 
         try {
-            await inviteExistingUser({
+            await addUserDirectly({
                 variables: {
                     projectId,
-                    email,
+                    email: email.trim(),
                     projectRole,
-                    roleLabelId: roleLabelId || null,
                 },
             });
 
-            alert("Запрошення успішно створено! Лінк можна буде відправити користувачу.");
             setEmail("");
             setProjectRole("contributor");
-            setRoleLabelId(null);
+            onUserAdded(); 
+            
         } catch (err) {
-            console.error("Помилка запрошення користувача в проєкт: ", err);
+            console.error("Помилка додавання користувача:", err);
         }
     };
 
     const displayError = localError || (error ? getFriendlyErrorMessage(error as any) : null);
 
     return (
-        <form
-            onSubmit={handleSubmit}
-            className="space-y-4 bg-bg-card p-4 rounded-xl border border-gray-100 mt-8"
-        >
-            <h3 className="text-lg font-semibold text-text-main">Запросити існуючого користувача в проєкт</h3>
+        <form onSubmit={handleSubmit} className="p-6 mb-6 border border-gray-100 shadow-sm bg-bg-card rounded-xl">
+            <h3 className="mb-4 text-lg font-bold text-text-main">Додати учасника до команди</h3>
 
             {displayError && <ErrorMessage message={displayError} />}
 
-            <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">Email користувача</label>
-                <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-            </div>
+            <div className="flex flex-col gap-4 md:flex-row md:items-end">
+                <div className="flex-1">
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Email користувача</label>
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        placeholder="user@example.com"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                </div>
 
-            <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">Роль у проєкті</label>
-                <select
-                    value={projectRole}
-                    onChange={(e) => setProjectRole(e.target.value as "manager" | "contributor")}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                <div className="w-full md:w-48">
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Роль</label>
+                    <select
+                        value={projectRole}
+                        onChange={(e) => setProjectRole(e.target.value as "manager" | "contributor")}
+                        className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                        <option value="contributor">Виконавець</option>
+                        <option value="manager">Менеджер</option>
+                    </select>
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={loading || !email}
+                    className="flex items-center justify-center px-6 py-2 text-white transition-colors rounded-lg h-[42px] bg-primary hover:bg-blue-700 disabled:opacity-50"
                 >
-                    <option value="contributor">Учасник (contributor)</option>
-                    <option value="manager">Менеджер (manager)</option>
-                </select>
+                    <FiUserPlus className="mr-2" />
+                    {loading ? "Додаємо..." : "Додати"}
+                </button>
             </div>
-
-            <button
-                type="submit"
-                disabled={loading}
-                className="px-4 py-2 text-white bg-primary rounded-lg hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-                {loading ? "Надсилаємо..." : "Запросити користувача"}
-            </button>
         </form>
     );
 };
