@@ -2,6 +2,7 @@
 using HotChocolate.Authorization;
 using TaskManager.API.DTOs;
 using TaskManager.API.Models.ProjectsTables;
+using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 
 namespace TaskManager.API.GraphQL.Mutations.Projects
@@ -17,7 +18,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
         {
             var userIdClaim = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
                               ?? claimsPrincipal.FindFirst("sub")?.Value;
-            if(!Guid.TryParse(userIdClaim, out var ownerId))
+            if (!Guid.TryParse(userIdClaim, out var ownerId))
             {
                 throw new GraphQLException("Не вдалось авторизувати користувача. Увійдіть знову.");
             }
@@ -45,5 +46,35 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             return createdProject
                 ?? throw new GraphQLException("Помилка під час зчитування створеного проекту.");
         }
+
+        [Authorize]
+        public async Task<bool> ToggleProjectIsArchivedAsync(
+            Guid projectId,
+            bool isArchived,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var currentUserId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (Guid.TryParse(currentUserId, out var userId))
+            {
+                var currentUser = await userRepository.GetUserByIdAsync(userId);
+                if (currentUser == null || !currentUser.IsAdmin)
+                {
+                    throw new GraphQLException("доступ заборонено!");
+                }
+
+                var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
+                if (currentProject == null)
+                {
+                    throw new GraphQLException("Даний gроект не знайдено.");
+                }
+                return await projectRepository.ToggleArchiveProjectAsync(projectId, isArchived);
+            }
+
+            throw new GraphQLException("Помилка авторизації");
+        }
+
     }
 }

@@ -11,3 +11,9 @@ export const CREATE_PROJECT = gql `
         }
     }
 `;
+
+export const TOGGLE_PROJECT_ARCHIVE = gql`
+  mutation ToggleProjectArchive($projectId: UUID!, $isArchived: Boolean!) {
+    toggleProjectIsArchived(projectId: $projectId, isArchived: $isArchived)
+  }
+`;
