@@ -46,7 +46,7 @@ namespace TaskManager.API.GraphQL.Mutations
             [Service] IUserRepository userRepository)
         {
             var userIdStr = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
+            
             if (Guid.TryParse(userIdStr, out Guid userId))
             {
                 await userRepository.UpdateRefreshTokenAsync(userId, null , null);

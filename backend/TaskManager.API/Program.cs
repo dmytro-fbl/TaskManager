@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using TaskManager.API.GraphQL.Mutations;
 using TaskManager.API.GraphQL.Mutations.Projects;
+using TaskManager.API.GraphQL.Extensions;
 using TaskManager.API.GraphQL.Queries;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
@@ -24,6 +25,11 @@ namespace TaskManager.API
 
             builder.Services
                 .AddGraphQLServer()
+                .ModifyRequestOptions(opt =>
+                {
+                    opt.IncludeExceptionDetails = true;
+                })
+                .AddGraphQLServer()
                 .AddAuthorization()
                 .AddQueryType<Query>()
                 .AddMutationType<Mutation>()
@@ -35,9 +41,12 @@ namespace TaskManager.API
                 .AddTypeExtension<InviteMutations>()
 
                 .AddTypeExtension<AuthMutations>()
-
+                .AddTypeExtension<ProjectQuery>()
                 .AddTypeExtension<ProjectMutations>()
-                ;
+                .AddTypeExtension<ProjectInviteMutations>()
+                .AddTypeExtension<ProjectRoleMutations>()
+                .AddTypeExtension<ProjectMembershipExtensions>();
+            ;
 
 
 
@@ -45,7 +54,10 @@ namespace TaskManager.API
             {
                 options.AddPolicy("AllowReact", policy =>
                 {
-                    policy.WithOrigins("http://localhost:5173")
+                    policy.WithOrigins(
+                        "http://localhost:5173",
+                        "http://localhost:5174"
+                    )
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 });

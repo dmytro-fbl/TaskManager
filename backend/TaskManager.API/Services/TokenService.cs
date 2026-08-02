@@ -17,8 +17,9 @@ namespace TaskManager.API.Services
         {
             _config = config;
 
-            var jwtSecretKey = _config.GetSection("Jwt:Key").Value;
-            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey));
+            var jwtSecretKey = _config["Jwt:Key"] ?? throw new Exception("Jwt:Key не знайдений");
+            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)
+            );
         }
         public string CreateToken(User user)
         {
