@@ -126,14 +126,14 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             await using var command = new NpgsqlCommand(sql, connection);
             await using var reader = await command.ExecuteReaderAsync();
 
-            while ( await reader.ReadAsync())
+            while (await reader.ReadAsync())
             {
                 projects.Add(new AdminProjectDto
                 {
                     Id = reader.GetGuid(reader.GetOrdinal("id")),
                     Title = reader.GetString(reader.GetOrdinal("title")),
                     Description = reader.IsDBNull(reader.GetOrdinal("description"))
-                    ? null 
+                    ? null
                     : reader.GetString(reader.GetOrdinal("description")),
                     BudgetCap = reader.IsDBNull(reader.GetOrdinal("budget_cap"))
                     ? null
@@ -146,7 +146,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     OwnerEmail = reader.GetString(reader.GetOrdinal("email"))
 
                 });
-            } 
+            }
             return projects;
         }
 
@@ -160,7 +160,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 WHERE id = @id;
             ";
 
-            await using var command = new NpgsqlCommand( sql, connection);
+            await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("id", projectId);
 
@@ -172,7 +172,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 {
                     Id = reader.GetGuid(reader.GetOrdinal("id")),
                     Title = reader.GetString(reader.GetOrdinal("title")),
-                    Description = reader.IsDBNull(reader.GetOrdinal("description")) 
+                    Description = reader.IsDBNull(reader.GetOrdinal("description"))
                         ? string.Empty : reader.GetString(reader.GetOrdinal("description")),
                     BudgetCap = reader.IsDBNull(reader.GetOrdinal("budget_cap"))
                         ? null : reader.GetDecimal(reader.GetOrdinal("budget_cap")),
@@ -436,7 +436,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 await using var reader = await selectCmd.ExecuteReaderAsync();
                 if (!await reader.ReadAsync())
                 {
-                    return false; 
+                    return false;
                 }
 
                 var invitationId = reader.GetGuid(reader.GetOrdinal("id"));
@@ -562,5 +562,27 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             var rows = await command.ExecuteNonQueryAsync();
             return rows > 0;
         }
+
+        public async Task<bool> ToggleArchiveProjectAsync(Guid projectId, bool isArchived)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                UPDATE app.projects
+                SET is_archived = @is_archived,
+                    updated_at = now()    
+                WHERE id = @id;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("is_archived", isArchived);
+            command.Parameters.AddWithValue("id", projectId);
+
+            var rowAffected = await command.ExecuteNonQueryAsync();
+            return rowAffected > 0;
+        }
+
+
     }
 }

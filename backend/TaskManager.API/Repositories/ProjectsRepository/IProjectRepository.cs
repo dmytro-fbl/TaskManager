@@ -1,4 +1,5 @@
-﻿using TaskManager.API.Models;
+﻿using TaskManager.API.DTOs;
+using TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
 
 namespace TaskManager.API.Repositories.ProjectsRepository
@@ -28,5 +29,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             Guid updatedByUserId);
 
         Task<IEnumerable<AdminProjectDto>> GetAllProjectAsync();
+
+        Task<bool> ToggleArchiveProjectAsync(Guid projectId, bool isArchived);
     }
 }
