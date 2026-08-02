@@ -4,50 +4,65 @@ import { CREATE_PROJECT } from "../../../graphql/mutations/projectMutation";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
 
-export const CreateProjectForm: React.FC = () => {
+interface CreateProjectFormProps {
+    onCreated?: () => void | Promise<void>;
+}
 
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
-    const [budgetCap, setBudgetCap] = useState<string>('');
-
+export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreated }) => {
+    const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
+    const [budgetCap, setBudgetCap] = useState<string>("");
     const [localError, setLocalError] = useState<string | null>(null);
 
-    const [createProject, { loading, error }] = useMutation(CREATE_PROJECT, {
-        refetchQueries: ['GetProjects'],
-    });
-
+    const [createProject, { loading, error }] = useMutation(CREATE_PROJECT);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (loading) return;
+
         setLocalError(null);
 
-        if(title.trim().length < 3){
+        const trimmedTitle = title.trim();
+
+        if (trimmedTitle.length < 3) {
             setLocalError("Назва проекту має містити щонайменше 3 символи");
             return;
         }
 
-        const parsedBudget = budgetCap ? parseFloat(budgetCap) : null;
-        if(parsedBudget !== null && parsedBudget < 0){
-            setLocalError("Бюджет не може бути від'ємним.");
+        const parsedBudget = budgetCap.trim() ? parseFloat(budgetCap) : null;
+
+        if (parsedBudget !== null && Number.isNaN(parsedBudget)) {
+            setLocalError("Некоректне значення бюджету.");
+            return;
         }
-        
+
+        if (parsedBudget !== null && parsedBudget < 0) {
+            setLocalError("Бюджет не може бути від'ємним.");
+            return;
+        }
+
         try {
             await createProject({
                 variables: {
                     input: {
-                        title,
-                        description,
-                        budgetCap: budgetCap ? parseFloat(budgetCap) : null,
+                        title: trimmedTitle,
+                        description: description.trim(),
+                        budgetCap: parsedBudget,
                     },
                 },
             });
 
-            setTitle('');
-            setDescription('');
-            setBudgetCap('');
-            alert('Проект успішно створено!');
+            setTitle("");
+            setDescription("");
+            setBudgetCap("");
 
-        } catch (err){
+            if (onCreated) {
+                await onCreated();
+            }
+
+            alert("Проєкт успішно створено!");
+        } catch (err) {
             console.error("Помилка створення проекту: ", err);
         }
     };
@@ -94,14 +109,14 @@ export const CreateProjectForm: React.FC = () => {
                     />
                 </div>
 
-                {displayError && <ErrorMessage message={displayError}/>}
+                {displayError && <ErrorMessage message={displayError} />}
 
                 <button
                     type="submit"
                     disabled={loading || !title.trim()}
                     className="w-full px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                    {loading ? 'Створення...' : 'Створити проєкт'}
+                    {loading ? "Створення..." : "Створити проєкт"}
                 </button>
             </form>
         </div>

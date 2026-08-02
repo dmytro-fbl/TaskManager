@@ -12,5 +12,20 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         Task<bool> InviteUserToProjectAsync(Guid projectId, string email, string projectRole);
         Task<bool> IsUserInProjectAsync(Guid projectId, Guid userId);
         Task<IEnumerable<ProjectMembership>> GetProjectMembershipsAsync(Guid projectId);
+        Task<bool> AcceptProjectInvitationAsync(string token, Guid currentUserId);
+        Task<bool> CreateProjectInvitationForExistingUserAsync(
+            Guid projectId,
+            string email,
+            string projectRole,
+            Guid invitedBy,
+            Guid? roleLabelId = null);
+
+        Task<bool> UpdateProjectMembershipRoleAsync(
+            Guid projectId,
+            Guid userId,
+            string projectRole,
+            Guid? roleLabelId,
+            Guid updatedByUserId);
+
     }
 }

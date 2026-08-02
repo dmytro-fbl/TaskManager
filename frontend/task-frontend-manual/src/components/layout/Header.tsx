@@ -61,6 +61,10 @@ export default function Header() {
             Дашборд
           </Link>
 
+          <Link to="/projects" className="text-text-main hover:text-primary font-medium transition">
+            Проєкти
+          </Link>
+
           {data?.me?.isAdmin && (
             <Link to="/adminPanel" className="text-text-main hover:text-primary font-medium transition">
               Адмін-панель
