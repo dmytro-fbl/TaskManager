@@ -3,10 +3,8 @@ import AdminSidebar from './components/AdminSidebar';
 import UsersTab from "./components/tabs/UsersTab";
 import PendingInviteTab from "./components/tabs/PendingInviteTab";
 import { CreateProjectForm } from "../Dashboard/Project/CreateProjectForm";
+import ProjectsTab from "../AdminPanel/components/tabs/ProjectsTab"
 
-interface GenerateInviteData {
-  generateInvite: string;
-}
 
 export default function AdminPanelPage() {
 
@@ -21,7 +19,7 @@ const [activeTab, setActiveTab] = useState<'users' | 'invites' | 'projects'>('us
           {/* Динамічне відображення активного блоку */}
           {activeTab === 'users' && <UsersTab />}
           {activeTab === 'invites' && <PendingInviteTab/>}
-          {activeTab === 'projects' && <CreateProjectForm />}
+          {activeTab === 'projects' && <ProjectsTab />}
 
         </div>
       </main>
