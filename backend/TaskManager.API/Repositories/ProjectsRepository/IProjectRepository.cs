@@ -1,4 +1,5 @@
-﻿using TaskManager.API.Models.ProjectsTables;
+﻿using TaskManager.API.DTOs;
+using TaskManager.API.Models.ProjectsTables;
 
 namespace TaskManager.API.Repositories.ProjectsRepository
 {
@@ -6,5 +7,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
     {
         Task<Guid> CreateProjectWithOwnerAsync(Project project);
         Task<Project?> GetProjectByIdAsync(Guid projectId);
+        Task<IEnumerable<AdminProjectDto>> GetAllProjectAsync();
     }
 }
