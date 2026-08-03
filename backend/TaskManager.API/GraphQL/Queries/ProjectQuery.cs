@@ -31,69 +31,97 @@ namespace TaskManager.API.GraphQL.Queries
         public async Task<Project?> GetProjectAsync(
             Guid id,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository)
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
         {
             var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
                                ?? claimsPrincipal.FindFirst("sub")?.Value;
 
-            if (!Guid.TryParse(userIdString, out var userId))
+            if (Guid.TryParse(userIdString, out var userId))
             {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
-            }
 
-            var isUserInProject = await projectRepository.IsUserInProjectAsync(id, userId);
-            if (!isUserInProject)
-            {
-                throw new GraphQLException("У вас немає доступу до цього проекту.");
-            }
+                var isUserInProject = await projectRepository.IsUserInProjectAsync(id, userId);
+                var currentUser = await userRepository.GetUserByIdAsync(userId);
+                if (currentUser == null)
+                {
+                    throw new GraphQLException("Даного користувача не існує");
+                }
 
-            return await projectRepository.GetProjectByIdAsync(id);
+
+                //if (!isUserInProject && !currentUser.IsAdmin)
+                //{
+                //    throw new GraphQLException("У вас немає доступу до цього проекту.");
+                //}
+
+
+                return await projectRepository.GetProjectByIdAsync(id);
+            }
+            throw new GraphQLException("Не вдалось авторизувати користувача.");
+
+
         }
 
         [Authorize]
         public async Task<IEnumerable<User>> GetProjectMembersAsync(
             Guid projectId,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository)
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
         {
             var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
                                ?? claimsPrincipal.FindFirst("sub")?.Value;
 
-            if (!Guid.TryParse(userIdString, out var userId))
+            if (Guid.TryParse(userIdString, out var userId))
             {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
-            }
 
-            var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, userId);
-            if (!isUserInProject)
-            {
-                throw new GraphQLException("У вас немає доступу до цього проекту.");
-            }
+                var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, userId);
+                var currentUser = await userRepository.GetUserByIdAsync(userId);
 
-            return await projectRepository.GetProjectMembersAsync(projectId);
+                if (currentUser == null)
+                {
+                    throw new GraphQLException("Даного користувача не існує");
+                }
+
+                //if (!isUserInProject && !currentUser.IsAdmin)
+                //{
+                //    throw new GraphQLException("У вас немає доступу до цього проекту.");
+                //}
+
+                return await projectRepository.GetProjectMembersAsync(projectId);
+            }
+            throw new GraphQLException("Не вдалось авторизувати користувача.");
         }
 
         [Authorize]
         public async Task<IEnumerable<ProjectMembership>> GetProjectMembershipsAsync(
             Guid projectId,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository)
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
         {
             var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
                                ?? claimsPrincipal.FindFirst("sub")?.Value;
 
-            if (!Guid.TryParse(userIdString, out var userId))
+            if (Guid.TryParse(userIdString, out var userId))
             {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
+                var currentUser = await userRepository.GetUserByIdAsync(userId);
+
+                if (currentUser == null)
+                {
+                    throw new GraphQLException("Даного користувача не існує");
+                }
+                var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, userId);
+                if (!isUserInProject && !currentUser.IsAdmin)
+                {
+                    throw new GraphQLException("У вас немає доступу до цього проекту.");
+                }
+
+                return await projectRepository.GetProjectMembershipsAsync(projectId);
             }
 
-            var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, userId);
-            if (!isUserInProject)
-            {
-                throw new GraphQLException("У вас немає доступу до цього проекту.");
-            }
+            
 
-            return await projectRepository.GetProjectMembershipsAsync(projectId);
+            throw new GraphQLException("Не вдалось авторизувати користувача.");
         }
 
         [Authorize]

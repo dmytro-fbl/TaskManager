@@ -611,5 +611,25 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             return rowAffected > 0;
         }
+
+        public async Task<string?> GetUserProjectRoleAsync(Guid projectId, Guid userId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT project_role
+                FROM app.project_memberships
+                WHERE project_id = @project_id AND user_id = @user_id;
+            ";
+
+            await using var command = new NpgsqlCommand( sql, connection);
+
+            command.Parameters.AddWithValue("project_id", projectId);
+            command.Parameters.AddWithValue("user_id", userId);
+
+            var result = await command.ExecuteScalarAsync();
+
+            return result?.ToString();
+        }
     }
 }
