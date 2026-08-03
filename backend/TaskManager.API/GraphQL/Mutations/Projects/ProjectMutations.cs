@@ -76,5 +76,35 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             throw new GraphQLException("Помилка авторизації");
         }
 
+
+        [Authorize]
+        public async Task<bool> UpdateProjectAsync(
+            Guid projectId,
+            string title,
+            string? description,
+            decimal? budgetCap,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var currentUserId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if(Guid.TryParse(currentUserId,out var userId))
+            {
+                var currentUser = await userRepository.GetUserByIdAsync(userId);
+                if (currentUser == null)
+                    throw new GraphQLException("Даний користувач не дійсний");
+
+                var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
+                if (currentProject == null || currentProject.Status == "archived")
+                    throw new GraphQLException("Даний проект архівований або його не існує");
+
+                if (currentProject.OwnerId != currentUser.Id && !currentUser.IsAdmin)
+                    throw new GraphQLException("Доступ оновлення заблоковано");
+
+                return await projectRepository.UpdateProjectAsync(projectId, title, description, budgetCap);
+            }
+            throw new GraphQLException("Помилка авторизації.");
+        }
     }
 }

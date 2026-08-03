@@ -587,6 +587,29 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             return rowAffected > 0;
         }
 
+        public async Task<bool> UpdateProjectAsync(Guid projectId, string title, string? description, decimal? budgetCap)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
 
+            const string sql = @"
+                UPDATE app.projects
+                SET title = @title,
+                    description = @description,
+                    budget_cap= @budget_cap,
+                    updated_at = now()
+                WHERE id = @id;
+            ";
+
+            await using var command = new NpgsqlCommand( sql, connection);
+
+            command.Parameters.AddWithValue("id", projectId);
+            command.Parameters.AddWithValue("title", title);
+            command.Parameters.AddWithValue("description", description ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("budget_cap", budgetCap ?? (object)DBNull.Value);
+
+            var rowAffected = await command.ExecuteNonQueryAsync();
+
+            return rowAffected > 0;
+        }
     }
 }

@@ -31,5 +31,9 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         Task<IEnumerable<AdminProjectDto>> GetAllProjectAsync();
 
         Task<bool> ToggleArchiveProjectAsync(Guid projectId, bool isArchived);
+
+        Task<bool> UpdateProjectAsync(Guid projectId, string title, string? description, decimal? budgetCap);
+
+        Task<string?> GetUserProjectRoleAsync(Guid projectId, Guid userId);
     }
 }
