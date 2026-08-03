@@ -129,6 +129,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             var result = await projectRepository.InviteUserToProjectAsync(projectId, email, projectRole);
 
             return result;
+
+
         }
     }
 }

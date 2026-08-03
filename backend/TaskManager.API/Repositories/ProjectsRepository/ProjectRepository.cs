@@ -567,9 +567,12 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
+            string newStatus = isArchived ? "archived" : "active";
+
             const string sql = @"
                 UPDATE app.projects
                 SET is_archived = @is_archived,
+                    status = @status,
                     updated_at = now()    
                 WHERE id = @id;
             ";
@@ -577,6 +580,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("is_archived", isArchived);
+            command.Parameters.AddWithValue("status", newStatus);
             command.Parameters.AddWithValue("id", projectId);
 
             var rowAffected = await command.ExecuteNonQueryAsync();

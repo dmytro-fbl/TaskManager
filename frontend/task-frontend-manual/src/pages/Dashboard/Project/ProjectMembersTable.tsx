@@ -195,8 +195,8 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                                                             : "bg-white text-text-main border-gray-300"
                                                     }`}
                                                 >
-                                                    <option value="manager">Manager</option>
-                                                    <option value="contributor">Contributor</option>
+                                                    <option value="manager">Менеджер</option>
+                                                    <option value="contributor">Виконавець</option>
                                                 </select>
 
                                                 {isSelf && (
