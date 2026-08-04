@@ -4,6 +4,7 @@ import { gql } from "@apollo/client";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
 import { UPDATE_PROJECT_MEMBER_ROLE } from "../../../graphql/mutations/projectRoleMutations";
+import { REMOVE_PROJECT_MEMBER } from "../../../graphql/mutations/projectMutation";
 
 interface ProjectMembership {
     id: string;
@@ -16,6 +17,7 @@ interface ProjectMembership {
         id: string;
         name: string;
         email: string;
+        isAdmin: boolean;
     };
 }
 
@@ -50,6 +52,7 @@ const GET_PROJECT_MEMBERSHIPS = gql`
         id
         name
         email
+        isAdmin
       }
     }
   }
@@ -83,17 +86,21 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
 
         const [updateRole, { loading: updating }] = useMutation(UPDATE_PROJECT_MEMBER_ROLE);
 
+        const [removeMember, { loading: removing }] = useMutation(REMOVE_PROJECT_MEMBER);
+
         const memberships = data?.projectMemberships ?? [];
         const currentUserId = meData?.me?.id ?? null;
 
+        const isAdmin = meData?.me?.isAdmin ?? false;
+
         const currentUserMembership = memberships.find((m) => m.userId === currentUserId);
-        const canManageRoles = currentUserMembership?.projectRole === "manager";
+        const canManageRoles = isAdmin || currentUserMembership?.projectRole === "manager";
 
         const handleChangeRole = async (membership: ProjectMembership, newRole: string) => {
             if (newRole === membership.projectRole) return;
 
             if (!canManageRoles) {
-                alert("Лише менеджер може змінювати ролі учасників.");
+                alert("Лише менеджер або адміністратор може змінювати ролі учасників.");
                 return;
             }
 
@@ -113,6 +120,35 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                         userId: membership.userId,
                         projectRole: newRole,
                         roleLabelId: membership.roleLabelId ?? null,
+                    },
+                });
+
+                await refetch();
+            } catch (err: any) {
+                alert(getFriendlyErrorMessage(err));
+            }
+        };
+
+        const handleRemoveMember = async (membership: ProjectMembership) => {
+            if (!canManageRoles) {
+                alert("Лише менеджер або адміністратор може видаляти учасників.");
+                return;
+            }
+
+            if (membership.userId === currentUserId) {
+                alert("Ви не можете видалити самі себе з проєкту.");
+                return;
+            }
+
+            if (!window.confirm(`Ви впевнені, що хочете видалити ${membership.user.name} (${membership.user.email}) з проєкту?`)) {
+                return;
+            }
+
+            try {
+                await removeMember({
+                    variables: {
+                        projectId,
+                        userId: membership.userId,
                     },
                 });
 
@@ -161,12 +197,13 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                                 <th className="p-4 font-medium">Email</th>
                                 <th className="p-4 font-medium">Роль</th>
                                 <th className="p-4 font-medium">Приєднаний</th>
+                                <th className="p-4 font-medium text-center">Дії</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {memberships.map((m) => {
                                 const isSelf = m.userId === currentUserId;
-                                const isDisabled = updating || !canManageRoles || isSelf;
+                                const isDisabled = updating || removing || !canManageRoles || isSelf;
 
                                 return (
                                     <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
@@ -189,11 +226,10 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                                                     value={m.projectRole}
                                                     onChange={(e) => handleChangeRole(m, e.target.value)}
                                                     disabled={isDisabled}
-                                                    className={`px-3 py-1 border rounded-lg text-sm ${
-                                                        isDisabled
+                                                    className={`px-3 py-1 border rounded-lg text-sm ${isDisabled
                                                             ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                                             : "bg-white text-text-main border-gray-300"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <option value="manager">Менеджер</option>
                                                     <option value="contributor">Виконавець</option>
@@ -209,6 +245,19 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
 
                                         <td className="p-4 text-sm text-text-muted">
                                             {new Date(m.joinedAt).toLocaleString("uk-UA")}
+                                        </td>
+
+                                        <td className="p-4 text-center">
+                                            <button
+                                                onClick={() => handleRemoveMember(m)}
+                                                disabled={isDisabled}
+                                                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${isDisabled
+                                                        ? "text-gray-300 bg-transparent cursor-not-allowed"
+                                                        : "text-red-600 bg-red-50 hover:bg-red-100"
+                                                    }`}
+                                            >
+                                                Видалити
+                                            </button>
                                         </td>
                                     </tr>
                                 );

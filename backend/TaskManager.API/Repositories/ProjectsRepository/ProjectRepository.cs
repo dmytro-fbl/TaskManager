@@ -524,28 +524,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
-            // Перевірити, що updatedByUserId має права (менеджер цього проекту)
-            const string currentMemberSql = @"
-                SELECT project_role
-                FROM app.project_memberships
-                WHERE project_id = @project_id AND user_id = @user_id;
-            ";
-
-            await using var currentMemberCmd = new NpgsqlCommand(currentMemberSql, connection);
-            currentMemberCmd.Parameters.AddWithValue("project_id", projectId);
-            currentMemberCmd.Parameters.AddWithValue("user_id", updatedByUserId);
-
-            var currentRoleObj = await currentMemberCmd.ExecuteScalarAsync();
-            if (currentRoleObj == null || !string.Equals(currentRoleObj.ToString(), "manager", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new GraphQLException("Тільки менеджер проекту може змінювати ролі інших учасників.");
-            }
-
-            if (projectRole is not ("manager" or "contributor"))
-            {
-                throw new GraphQLException("Невірна роль проекту.");
-            }
-
             const string sql = @"
                 UPDATE app.project_memberships
                 SET project_role = @project_role,
@@ -587,6 +565,49 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             return rowAffected > 0;
         }
 
+        public async Task<bool> UpdateProjectAsync(Guid projectId, string title, string? description, decimal? budgetCap)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
 
+            const string sql = @"
+                UPDATE app.projects
+                SET title = @title,
+                    description = @description,
+                    budget_cap= @budget_cap,
+                    updated_at = now()
+                WHERE id = @id;
+            ";
+
+            await using var command = new NpgsqlCommand( sql, connection);
+
+            command.Parameters.AddWithValue("id", projectId);
+            command.Parameters.AddWithValue("title", title);
+            command.Parameters.AddWithValue("description", description ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("budget_cap", budgetCap ?? (object)DBNull.Value);
+
+            var rowAffected = await command.ExecuteNonQueryAsync();
+
+            return rowAffected > 0;
+        }
+
+        public async Task<string?> GetUserProjectRoleAsync(Guid projectId, Guid userId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT project_role
+                FROM app.project_memberships
+                WHERE project_id = @project_id AND user_id = @user_id;
+            ";
+
+            await using var command = new NpgsqlCommand( sql, connection);
+
+            command.Parameters.AddWithValue("project_id", projectId);
+            command.Parameters.AddWithValue("user_id", userId);
+
+            var result = await command.ExecuteScalarAsync();
+
+            return result?.ToString();
+        }
     }
 }

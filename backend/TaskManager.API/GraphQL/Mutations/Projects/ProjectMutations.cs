@@ -68,7 +68,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
                 if (currentProject == null)
                 {
-                    throw new GraphQLException("Даний gроект не знайдено.");
+                    throw new GraphQLException("Даний проект не знайдено.");
                 }
                 return await projectRepository.ToggleArchiveProjectAsync(projectId, isArchived);
             }
@@ -76,5 +76,40 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             throw new GraphQLException("Помилка авторизації");
         }
 
+
+        [Authorize]
+        public async Task<bool> UpdateProjectAsync(
+            Guid projectId,
+            string title,
+            string? description,
+            decimal? budgetCap,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var currentUserId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? claimsPrincipal.FindFirst("sub")?.Value;
+
+            if(Guid.TryParse(currentUserId,out var userId))
+            {
+                var currentUser = await userRepository.GetUserByIdAsync(userId);
+                if (currentUser == null)
+                    throw new GraphQLException("Даний користувач не дійсний");
+
+                var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
+                if (currentProject == null || currentProject.Status == "archived")
+                    throw new GraphQLException("Даний проект архівований або його не існує");
+
+                var userRole = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
+
+                bool hasAccess = currentUser.IsAdmin || currentProject.OwnerId == userId || userRole == "manager";
+
+                if (!hasAccess)
+                    throw new GraphQLException("У вас немає прав на редагування цього проекту.");
+
+                return await projectRepository.UpdateProjectAsync(projectId, title, description, budgetCap);
+            }
+            throw new GraphQLException("Помилка авторизації.");
+        }
     }
 }

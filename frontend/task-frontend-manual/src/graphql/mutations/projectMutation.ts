@@ -17,3 +17,25 @@ export const TOGGLE_PROJECT_ARCHIVE = gql`
     toggleProjectIsArchived(projectId: $projectId, isArchived: $isArchived)
   }
 `;
+
+export const UPDATE_PROJECT = gql`
+  mutation UpdateProject(
+    $projectId: UUID!
+    $title: String!
+    $description: String
+    $budgetCap: Decimal
+  ) {
+    updateProject(
+      projectId: $projectId
+      title: $title
+      description: $description
+      budgetCap: $budgetCap
+    )
+  }
+`;
+
+export const REMOVE_PROJECT_MEMBER = gql`
+  mutation RemoveProjectMember($projectId: UUID!, $userId: UUID!) {
+    removeProjectMember(projectId: $projectId, userId: $userId)
+  }
+`;

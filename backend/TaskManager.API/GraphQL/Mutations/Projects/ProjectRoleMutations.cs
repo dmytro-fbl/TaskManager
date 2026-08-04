@@ -1,5 +1,7 @@
 ﻿using HotChocolate.Authorization;
+using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
+using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 
 namespace TaskManager.API.GraphQL.Mutations.Projects
@@ -14,6 +16,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             string projectRole,
             Guid? roleLabelId,
             [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository,
             ClaimsPrincipal claimsPrincipal)
         { 
             var currentUserIdStr = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value?? claimsPrincipal.FindFirst("sub")?.Value;
@@ -21,6 +24,10 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             {
                 throw new GraphQLException("Не вдалось авторизувати користувача.");
             }
+            var currentUser = await userRepository.GetUserByIdAsync(currentUserId);
+
+            if (currentUser == null)
+                throw new GraphQLException("Даний користувач не дійсний");
 
             if (currentUserId == userId)
             {
@@ -30,6 +37,22 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (projectRole is not ("manager" or "contributor"))
             {
                 throw new GraphQLException("Невірна роль проєкту.");
+            }
+
+            bool hasAccess = currentUser.IsAdmin;
+
+            if (!hasAccess)
+            {
+                var currentUserRole = await projectRepository.GetUserProjectRoleAsync(projectId, currentUserId);
+                if (currentUserRole == "manager")
+                {
+                    hasAccess = true;
+                }
+            }
+
+            if (!hasAccess)
+            {
+                throw new GraphQLException("Тільки менеджер проєкту або системний адміністратор може змінювати ролі інших учасників.");
             }
 
             var success = await projectRepository.UpdateProjectMembershipRoleAsync(

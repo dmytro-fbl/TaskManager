@@ -11,7 +11,6 @@ namespace TaskManager.API.GraphQL.Mutations
         {
             try
             {
-
                 return await userRepository.GenerateInviteAsync(email, isAdmin);
             }catch (Exception ex)
             {
