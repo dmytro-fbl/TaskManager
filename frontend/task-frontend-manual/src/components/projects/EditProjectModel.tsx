@@ -4,11 +4,10 @@ import { UPDATE_PROJECT } from '../../graphql/mutations/projectMutation';
 import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 import ErrorMessage from '../ui/ErrorMessage';
 
-// Типізація пропсів, які приймає модалка
 interface EditProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void; // Функція для оновлення даних після збереження
+  onSuccess: () => void; 
   project: {
     id: string;
     title: string;
@@ -23,15 +22,12 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
   onSuccess,
   project,
 }) => {
-  // Локальний стан для полів форми, ініціалізований поточними даними
   const [title, setTitle] = useState(project.title);
   const [description, setDescription] = useState(project.description || '');
   const [budgetCap, setBudgetCap] = useState(project.budgetCap ? project.budgetCap.toString() : '');
 
-  // Підключаємо мутацію
   const [updateProject, { loading, error }] = useMutation(UPDATE_PROJECT);
 
-  // Обробник натискання "Зберегти"
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -45,14 +41,13 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
         },
       });
       
-      onSuccess(); // Оновлюємо таблицю/сторінку
-      onClose();   // Закриваємо модалку
+      onSuccess(); 
+      onClose();   
     } catch (err) {
       console.error('Помилка оновлення проєкту:', err);
     }
   };
 
-  // Якщо модалка закрита, не рендеримо нічого
   if (!isOpen) return null;
 
   return (

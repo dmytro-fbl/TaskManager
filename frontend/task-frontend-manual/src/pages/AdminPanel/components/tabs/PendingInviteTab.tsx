@@ -188,7 +188,7 @@ export default function PendingInviteTab() {
                             Відправити запрошення
                         </h3>
                         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                            {inviteErorr && <ErrorMessage message={getFriendlyErrorMessage(error)} />}
+                            {inviteErorr && <ErrorMessage message={getFriendlyErrorMessage(inviteErorr as any)} />}
 
                             <div>
                                 <label className="block text-sm font-medium text-text-main mb-1">

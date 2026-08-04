@@ -98,7 +98,6 @@ export const ProjectDetailsPage: React.FC = () => {
         {/* Карточка з деталями проєкту */}
         <div className="bg-bg-card p-6 rounded-xl shadow-sm border border-gray-100 space-y-4">
             
-            {/* Шапка карточки: Заголовок + Статус + Кнопка */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <h1 className="text-2xl font-bold text-text-main">{project.title}</h1>
@@ -115,12 +114,10 @@ export const ProjectDetailsPage: React.FC = () => {
                 </button>
             </div>
 
-            {/* Тіло карточки: Опис */}
             <p className="text-text-muted">
                 {project.description?.trim() ? project.description : "Опис проєкту відсутній."}
             </p>
 
-            {/* Підвал карточки: Бюджет */}
             <div className="text-sm text-text-main font-medium border-t pt-4 border-gray-100">
                 Бюджетний ліміт: {project.budgetCap != null ? `$${project.budgetCap}` : "Не обмежено"}
             </div>
@@ -138,20 +135,18 @@ export const ProjectDetailsPage: React.FC = () => {
                 }}
             />
 
-            {/* Таблиця учасників проєкту */}
             <ProjectMembersTable projectId={id} ref={tableRef} />
         </div>
 
-        {/* Модалка редагування (рендериться поверх усього, якщо isEditModalOpen === true) */}
         {project && (
             <EditProjectModal
                 isOpen={isEditModalOpen}
                 onClose={() => setIsEditModalOpen(false)}
-                onSuccess={() => refetch()} // Оновлюємо сторінку після редагування
+                onSuccess={() => refetch()}
                 project={project}
             />
         )}
         
-    </div> // Кінець головного контейнера
+    </div> 
 );
 };

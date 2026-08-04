@@ -524,28 +524,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
-            // Перевірити, що updatedByUserId має права (менеджер цього проекту)
-            const string currentMemberSql = @"
-                SELECT project_role
-                FROM app.project_memberships
-                WHERE project_id = @project_id AND user_id = @user_id;
-            ";
-
-            await using var currentMemberCmd = new NpgsqlCommand(currentMemberSql, connection);
-            currentMemberCmd.Parameters.AddWithValue("project_id", projectId);
-            currentMemberCmd.Parameters.AddWithValue("user_id", updatedByUserId);
-
-            var currentRoleObj = await currentMemberCmd.ExecuteScalarAsync();
-            if (currentRoleObj == null || !string.Equals(currentRoleObj.ToString(), "manager", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new GraphQLException("Тільки менеджер проекту може змінювати ролі інших учасників.");
-            }
-
-            if (projectRole is not ("manager" or "contributor"))
-            {
-                throw new GraphQLException("Невірна роль проекту.");
-            }
-
             const string sql = @"
                 UPDATE app.project_memberships
                 SET project_role = @project_role,
