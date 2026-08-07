@@ -125,6 +125,79 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 );
         }
 
+        [Authorize]
+        public async Task<TaskItem> UpdateTaskStatusAsync(
+            Guid taskId,
+            Guid statusId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] ITaskRepository taskRepository,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var currentUserId = GetCurrentUserId(claimsPrincipal);
+
+            var currentUser = await userRepository.GetUserByIdAsync(
+                currentUserId
+            );
+
+            if (currentUser == null)
+            {
+                throw new GraphQLException(
+                    "Користувача не знайдено."
+                );
+            }
+
+            var task = await taskRepository.GetTaskByIdAsync(taskId);
+
+            if (task == null)
+            {
+                throw new GraphQLException(
+                    "Таску не знайдено."
+                );
+            }
+
+            var hasAccess = currentUser.IsAdmin ||
+                await projectRepository.IsUserInProjectAsync(
+                    task.ProjectId,
+                    currentUserId
+                );
+
+            if (!hasAccess)
+            {
+                throw new GraphQLException(
+                    "У вас немає доступу до цієї таски."
+                );
+            }
+
+            var statusExists = await taskRepository.IsProjectStatusAsync(
+                task.ProjectId,
+                statusId
+            );
+
+            if (!statusExists)
+            {
+                throw new GraphQLException(
+                    "Вибраний статус не належить цьому проєкту."
+                );
+            }
+
+            var updated = await taskRepository.UpdateTaskStatusAsync(
+                taskId,
+                statusId
+            );
+
+            if (!updated)
+            {
+                throw new GraphQLException(
+                    "Не вдалося оновити статус таски."
+                );
+            }
+
+            return await taskRepository.GetTaskByIdAsync(taskId)
+                ?? throw new GraphQLException(
+                    "Статус оновлено, але таску не вдалося отримати."
+                );
+        }
         private static Guid GetCurrentUserId(
             ClaimsPrincipal claimsPrincipal)
         {

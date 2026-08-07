@@ -16,5 +16,6 @@ namespace TaskManager.API.Repositories.TasksRepository
 
         Task<bool> RemoveTaskAssignmentAsync(Guid taskId, Guid userId);
         Task<bool> IsProjectStatusAsync(Guid projectId, Guid statusId);
+        Task<bool> UpdateTaskStatusAsync( Guid taskId, Guid statusId);
     }
 }

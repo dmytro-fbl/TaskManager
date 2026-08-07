@@ -3,12 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
 
+import { ProjectTasks } from "./Dashboard/Project/ProjectTasks";
 import { ProjectMembersTable } from "./Dashboard/Project/ProjectMembersTable";
 import { AddUserToProjectForm } from "./Dashboard/Project/InviteExistingUserForm";
+import { ProjectStatuses } from "./Dashboard/Project/ProjectStatuses";
+
 import ErrorMessage from "../components/ui/ErrorMessage";
 import { getFriendlyErrorMessage } from "../utils/errorHandler";
 import { EditProjectModal } from "../components/projects/EditProjectModel";
-import { ProjectStatuses } from "./Dashboard/Project/ProjectStatuses";
 
 interface Project {
     id: string;
@@ -48,7 +50,9 @@ export const ProjectDetailsPage: React.FC = () => {
     const { data, loading, error, refetch } = useQuery<{
         project: Project | null;
     }>(GET_PROJECT_DETAILS, {
-        variables: { id },
+        variables: {
+            id: id ?? "",
+        },
         skip: !id,
         fetchPolicy: "network-only",
     });
@@ -154,7 +158,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="space-y-6 pt-4">
+            <section className="space-y-6">
                 <h2 className="text-xl font-bold text-text-main">
                     Команда проєкту
                 </h2>
@@ -170,7 +174,9 @@ export const ProjectDetailsPage: React.FC = () => {
                     projectId={id}
                     ref={tableRef}
                 />
-            </div>
+            </section>
+
+            <ProjectTasks projectId={id} />
 
             <EditProjectModal
                 isOpen={isEditModalOpen}

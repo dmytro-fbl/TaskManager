@@ -149,28 +149,79 @@ namespace TaskManager.API.Repositories.TasksRepository
         public async Task<bool> AddTaskAssignmentAsync(TaskAssignment assignment)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
 
-            const string sql = @"
-                INSERT INTO app.task_assignments
-                    (id, task_id, user_id, estimated_hours, assigned_by, assigned_at)
-                VALUES
-                    (@id, @task_id, @user_id, @estimated_hours, @assigned_by, @assigned_at)
-                ON CONFLICT (task_id, user_id) DO NOTHING;";
+            const string insertSql = @"
+            INSERT INTO app.task_assignments
+                (id, task_id, user_id, estimated_hours, assigned_by, assigned_at)
+            VALUES
+                (@id, @task_id, @user_id, @estimated_hours, @assigned_by, @assigned_at)
+            ON CONFLICT (task_id, user_id) DO NOTHING;";
 
-            await using var command = new NpgsqlCommand(sql, connection);
+            await using var insertCommand = new NpgsqlCommand(
+                insertSql,
+                connection,
+                transaction
+            );
 
             AddParameter(
-                command,
+                insertCommand,
                 "id",
-                assignment.Id == Guid.Empty ? Guid.NewGuid() : assignment.Id
+                assignment.Id == Guid.Empty
+                    ? Guid.NewGuid()
+                    : assignment.Id
             );
-            AddParameter(command, "task_id", assignment.TaskId);
-            AddParameter(command, "user_id", assignment.UserId);
-            AddParameter(command, "estimated_hours", assignment.EstimatedHours);
-            AddParameter(command, "assigned_by", assignment.AssignedBy);
-            AddParameter(command, "assigned_at", assignment.AssignedAt);
 
-            return await command.ExecuteNonQueryAsync() > 0;
+            AddParameter(insertCommand, "task_id", assignment.TaskId);
+            AddParameter(insertCommand, "user_id", assignment.UserId);
+            AddParameter(
+                insertCommand,
+                "estimated_hours",
+                assignment.EstimatedHours
+            );
+            AddParameter(
+                insertCommand,
+                "assigned_by",
+                assignment.AssignedBy
+            );
+            AddParameter(
+                insertCommand,
+                "assigned_at",
+                assignment.AssignedAt
+            );
+
+            var inserted = await insertCommand.ExecuteNonQueryAsync() > 0;
+
+            if (!inserted)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+
+            const string updateTaskSql = @"
+                UPDATE app.tasks
+                SET assignee_id = @user_id,
+                    updated_at = @updated_at
+                WHERE id = @task_id;";
+
+            await using var updateTaskCommand = new NpgsqlCommand(
+                updateTaskSql,
+                connection,
+                transaction
+            );
+
+            AddParameter(updateTaskCommand, "task_id", assignment.TaskId);
+            AddParameter(updateTaskCommand, "user_id", assignment.UserId);
+            AddParameter(
+                updateTaskCommand,
+                "updated_at",
+                DateTimeOffset.UtcNow
+            );
+
+            await updateTaskCommand.ExecuteNonQueryAsync();
+            await transaction.CommitAsync();
+
+            return true;
         }
 
         public async Task<bool> RemoveTaskAssignmentAsync(
@@ -201,6 +252,24 @@ namespace TaskManager.API.Repositories.TasksRepository
                 name,
                 value ?? DBNull.Value
             );
+        }
+        public async Task<bool> UpdateTaskStatusAsync(Guid taskId,Guid statusId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                UPDATE app.tasks
+                SET status_id = @status_id,
+                    updated_at = @updated_at
+                WHERE id = @task_id;";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            AddParameter(command, "task_id", taskId);
+            AddParameter(command, "status_id", statusId);
+            AddParameter(command, "updated_at", DateTimeOffset.UtcNow);
+
+            return await command.ExecuteNonQueryAsync() > 0;
         }
         public async Task<bool> IsProjectStatusAsync( Guid projectId, Guid statusId)
         {
