@@ -38,12 +38,12 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
                 // Знайти існуючого користувача по email (зареєстрований, активний)
                 const string userSql = @"
-            SELECT id
-            FROM app.users
-            WHERE email = @email
-              AND is_active = true
-              AND password_hash IS NOT NULL;
-        ";
+                    SELECT id
+                    FROM app.users
+                    WHERE email = @email
+                      AND is_active = true
+                      AND password_hash IS NOT NULL;
+                ";
                 await using var userCmd = new NpgsqlCommand(userSql, connection);
                 userCmd.Parameters.AddWithValue("email", email);
 
@@ -55,10 +55,10 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
                 // Перевірити, що юзер ще не в проекті
                 const string memberCheckSql = @"
-            SELECT COUNT(1)
-            FROM app.project_memberships
-            WHERE project_id = @project_id AND user_id = @user_id;
-        ";
+                    SELECT COUNT(1)
+                    FROM app.project_memberships
+                    WHERE project_id = @project_id AND user_id = @user_id;
+                ";
                 await using var memberCheckCmd = new NpgsqlCommand(memberCheckSql, connection);
                 memberCheckCmd.Parameters.AddWithValue("project_id", projectId);
                 memberCheckCmd.Parameters.AddWithValue("user_id", userId);
@@ -73,17 +73,17 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 var token = Guid.NewGuid().ToString("N");
 
                 const string insertInviteSql = @"
-            INSERT INTO app.invitations (
-                id, project_id, email, token,
-                project_role, role_label_id,
-                invited_by, expires_at, created_at
-            )
-            VALUES (
-                gen_random_uuid(), @project_id, @email, @token,
-                @project_role, @role_label_id,
-                @invited_by, now() + interval '7 days', now()
-            );
-        ";
+                    INSERT INTO app.invitations (
+                        id, project_id, email, token,
+                        project_role, role_label_id,
+                        invited_by, expires_at, created_at
+                    )
+                    VALUES (
+                        gen_random_uuid(), @project_id, @email, @token,
+                        @project_role, @role_label_id,
+                        @invited_by, now() + interval '7 days', now()
+                    );
+                ";
 
                 await using var insertCmd = new NpgsqlCommand(insertInviteSql, connection);
                 insertCmd.Parameters.AddWithValue("project_id", projectId);
@@ -380,40 +380,74 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         public async Task<Guid> CreateProjectWithOwnerAsync(Project project)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
+            await using var transaction = await connection.BeginTransactionAsync();
 
             const string sql = @"
-                INSERT INTO app.projects (
-                    id, title, description, budget_cap, status, owner_id, is_archived, created_at, updated_at
-                )
-                VALUES (
-                    @id, @title, @description, @budget_cap, @status, @owner_id, @is_archived, @created_at, @updated_at
-                );
+            INSERT INTO app.projects ( 
+                id, title,description, budget_cap,status,owner_id,is_archived,created_at, updated_at
+            )
+            VALUES (
+                @id, @title, @description, @budget_cap, @status, @owner_id, @is_archived, @created_at, @updated_at
+            );
 
-                INSERT INTO app.project_memberships (
-                    project_id, user_id, project_role, joined_at
-                )
-                VALUES (
-                    @id, @owner_id, 'manager', @created_at
-                );
-            ";
+            INSERT INTO app.project_memberships (
+                project_id, user_id, project_role, joined_at
+            )
+            VALUES (
+                @id, @owner_id, 'manager', @created_at
+            );
 
-            var projectId = project.Id == Guid.Empty ? Guid.NewGuid() : project.Id;
+            INSERT INTO app.project_statuses (
+                id, project_id, name, category, color, sort_order, is_final, created_at
+            )
+            VALUES
+            (
+                gen_random_uuid(), @id, 'To do', 'todo', '#64748b', 0, false, @created_at
+            ),
+            (
+                gen_random_uuid(), @id, 'In progress', 'in_progress', '#2563eb', 1, false, @created_at
+            ),
+            (
+                gen_random_uuid(), @id, 'Done', 'done', '#16a34a', 2, true, @created_at
+            );
+    ";
+
+            var projectId = project.Id == Guid.Empty
+                ? Guid.NewGuid()
+                : project.Id;
+
             var now = DateTimeOffset.UtcNow;
 
-            await using var command = new NpgsqlCommand(sql, connection);
+            await using var command = new NpgsqlCommand(sql, connection, transaction);
+
             command.Parameters.AddWithValue("id", projectId);
             command.Parameters.AddWithValue("title", project.Title);
-            command.Parameters.AddWithValue("description", (object?)project.Description ?? DBNull.Value);
-            command.Parameters.AddWithValue("budget_cap", (object?)project.BudgetCap ?? DBNull.Value);
+            command.Parameters.AddWithValue(
+                "description",
+                (object?)project.Description ?? DBNull.Value
+            );
+            command.Parameters.AddWithValue(
+                "budget_cap",
+                (object?)project.BudgetCap ?? DBNull.Value
+            );
             command.Parameters.AddWithValue("status", project.Status);
             command.Parameters.AddWithValue("owner_id", project.OwnerId);
             command.Parameters.AddWithValue("is_archived", project.IsArchived);
             command.Parameters.AddWithValue("created_at", now);
             command.Parameters.AddWithValue("updated_at", now);
 
-            await command.ExecuteNonQueryAsync();
+            try
+            {
+                await command.ExecuteNonQueryAsync();
+                await transaction.CommitAsync();
 
-            return projectId;
+                return projectId;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<bool> AcceptProjectInvitationAsync(string token, Guid currentUserId)
@@ -608,6 +642,46 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             var result = await command.ExecuteScalarAsync();
 
             return result?.ToString();
+        }
+
+        public async Task<IEnumerable<ProjectStatus>> GetProjectStatusesAsync(Guid projectId)
+        {
+            var statuses = new List<ProjectStatus>();
+
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT id, project_id, name, category, color,
+                       sort_order, is_final, created_at
+                FROM app.project_statuses
+                WHERE project_id = @project_id
+                ORDER BY sort_order;";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("project_id", projectId);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                statuses.Add(new ProjectStatus
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    ProjectId = reader.GetGuid(reader.GetOrdinal("project_id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
+                    Category = reader.GetString(reader.GetOrdinal("category")),
+                    Color = reader.IsDBNull(reader.GetOrdinal("color"))
+                        ? null
+                        : reader.GetString(reader.GetOrdinal("color")),
+                    SortOrder = reader.GetInt32(reader.GetOrdinal("sort_order")),
+                    IsFinal = reader.GetBoolean(reader.GetOrdinal("is_final")),
+                    CreatedAt = reader.GetFieldValue<DateTimeOffset>(
+                        reader.GetOrdinal("created_at")
+                    )
+                });
+            }
+
+            return statuses;
         }
     }
 }
