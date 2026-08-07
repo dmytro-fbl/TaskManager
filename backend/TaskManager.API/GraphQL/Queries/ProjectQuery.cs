@@ -144,10 +144,10 @@ namespace TaskManager.API.GraphQL.Queries
 
         [Authorize]
         public async Task<IEnumerable<ProjectStatus>> GetProjectStatusesAsync(
-            Guid projectId,
-            ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository,
-            [Service] IUserRepository userRepository)
+        Guid projectId,
+        ClaimsPrincipal claimsPrincipal,
+        [Service] IProjectRepository projectRepository,
+        [Service] IUserRepository userRepository)
         {
             var userIdValue =
                 claimsPrincipal.FindFirst(
