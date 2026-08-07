@@ -2,17 +2,18 @@ import React, { useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react"
-import { ProjectMembersTable } from "./Dashboard/Project/ProjectMembersTable";
-import { AddUserToProjectForm } from "./Dashboard/Project/InviteExistingUserForm";
-import ErrorMessage from "../components/ui/ErrorMessage";
-import { getFriendlyErrorMessage } from "../utils/errorHandler";
-import { EditProjectModal } from "../components/projects/EditProjectModel";
+import { ProjectMembersTable } from "./ProjectMembersTable";
+import { AddUserToProjectForm } from "./InviteExistingUserForm";
+import ErrorMessage from "../../../components/ui/ErrorMessage";
+import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
+import { EditProjectModal } from "../../../components/projects/EditProjectModel";
 
 interface Project {
     id: string;
     title: string;
     description?: string | null;
     budgetCap?: number | null;
+    deadline?: string | null;
     status: string;
     isArchived: boolean;
     createdAt: string;
@@ -25,6 +26,7 @@ const GET_PROJECT_DETAILS = gql`
       title
       description
       budgetCap
+      deadline
       status
       isArchived
       createdAt
@@ -118,8 +120,17 @@ export const ProjectDetailsPage: React.FC = () => {
                 {project.description?.trim() ? project.description : "Опис проєкту відсутній."}
             </p>
 
-            <div className="text-sm text-text-main font-medium border-t pt-4 border-gray-100">
-                Бюджетний ліміт: {project.budgetCap != null ? `$${project.budgetCap}` : "Не обмежено"}
+            <div className="flex flex-col sm:flex-row sm:gap-8 text-sm text-text-main font-medium border-t pt-4 border-gray-100">
+                <div>
+                    <span className="text-text-muted mr-1">Бюджетний ліміт:</span> 
+                    {project.budgetCap != null ? `$${project.budgetCap}` : "Не обмежено"}
+                </div>
+                <div>
+                    <span className="text-text-muted mr-1">Дедлайн:</span>
+                    {project.deadline 
+                        ? new Date(project.deadline).toLocaleDateString('uk-UA') 
+                        : "Не вказано"}
+                </div>
             </div>
         </div>
 

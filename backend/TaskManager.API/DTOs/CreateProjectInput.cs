@@ -3,7 +3,8 @@
     public record CreateProjectInput(
         string Title,
         string? Description,
-        decimal? BudgetCap
+        decimal? BudgetCap,
+        DateTimeOffset Deadline
     );
 
 }

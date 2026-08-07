@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMutation } from '@apollo/client/react';
 import { UPDATE_PROJECT } from '../../graphql/mutations/projectMutation';
 import { getFriendlyErrorMessage } from '../../utils/errorHandler';
@@ -7,12 +7,13 @@ import ErrorMessage from '../ui/ErrorMessage';
 interface EditProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void; 
+  onSuccess: () => void;
   project: {
     id: string;
     title: string;
     description?: string | null;
     budgetCap?: number | null;
+    deadline?: string | null;
   };
 }
 
@@ -26,10 +27,24 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
   const [description, setDescription] = useState(project.description || '');
   const [budgetCap, setBudgetCap] = useState(project.budgetCap ? project.budgetCap.toString() : '');
 
+  const [deadline, setDeadline] = useState(project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '');
+
+  useEffect(() => {
+    setTitle(project.title);
+    setDescription(project.description || '');
+    setBudgetCap(project.budgetCap ? project.budgetCap.toString() : '');
+    setDeadline(project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '');
+  }, [project]);
+
   const [updateProject, { loading, error }] = useMutation(UPDATE_PROJECT);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let parsedDeadline = null;
+    if (deadline.trim()) {
+      parsedDeadline = new Date(deadline).toISOString();
+    }
 
     try {
       await updateProject({
@@ -38,11 +53,12 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
           title,
           description: description.trim() === '' ? null : description,
           budgetCap: budgetCap ? parseFloat(budgetCap) : null,
+          deadline: parsedDeadline,
         },
       });
-      
-      onSuccess(); 
-      onClose();   
+
+      onSuccess();
+      onClose();
     } catch (err) {
       console.error('Помилка оновлення проєкту:', err);
     }
@@ -54,7 +70,7 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="w-full max-w-md p-6 bg-white rounded-xl shadow-lg">
         <h2 className="mb-4 text-xl font-bold text-gray-800">Редагувати проєкт</h2>
-        
+
         {error && <ErrorMessage message={getFriendlyErrorMessage(error as any) ?? 'Помилка'} />}
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -79,15 +95,27 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
             />
           </div>
 
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700">Бюджет</label>
-            <input
-              type="number"
-              step="0.01"
-              value={budgetCap}
-              onChange={(e) => setBudgetCap(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">Бюджет ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={budgetCap}
+                onChange={(e) => setBudgetCap(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+
+            <div className="flex-1">
+              <label className="block mb-1 text-sm font-medium text-gray-700">Дедлайн</label>
+              <input
+                type="date"
+                value={deadline}
+                onChange={(e) => setDeadline(e.target.value)}
+                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-6">

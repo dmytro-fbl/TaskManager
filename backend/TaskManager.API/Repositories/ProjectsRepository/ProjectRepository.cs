@@ -1,6 +1,7 @@
-﻿using Npgsql;
-using TaskManager.API.Models;
+﻿using System.Data;
+using Npgsql;
 using TaskManager.API.DTOs;
+using TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
 
 namespace TaskManager.API.Repositories.ProjectsRepository
@@ -116,6 +117,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     p.status,
                     p.owner_id,
                     p.is_archived,
+                    p.deadline,
                     p.created_at,
                     u.name,
                     u.email
@@ -141,6 +143,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     Status = reader.GetString(reader.GetOrdinal("status")),
                     OwnerId = reader.GetGuid(reader.GetOrdinal("owner_id")),
                     IsArchived = reader.GetBoolean(reader.GetOrdinal("is_archived")),
+                    Deadline = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("deadline")),
                     CreatedAt = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("created_at")),
                     OwnerName = reader.GetString(reader.GetOrdinal("name")),
                     OwnerEmail = reader.GetString(reader.GetOrdinal("email"))
@@ -155,7 +158,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             string sql = @"
-                SELECT id, title, description, budget_cap, status, owner_id, is_archived, created_at, updated_at 
+                SELECT id, title, description, budget_cap, deadline, status, owner_id, is_archived, created_at, updated_at 
                 FROM app.projects
                 WHERE id = @id;
             ";
@@ -179,7 +182,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     Status = reader.GetString(reader.GetOrdinal("status")),
                     OwnerId = reader.GetGuid(reader.GetOrdinal("owner_id")),
                     IsArchived = reader.GetBoolean(reader.GetOrdinal("is_archived")),
-
+                    Deadline = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("deadline")),
                     CreatedAt = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("created_at")),
                     UpdatedAt = reader.IsDBNull(reader.GetOrdinal("updated_at"))
                         ? default : reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("updated_at"))
@@ -383,10 +386,10 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             const string sql = @"
                 INSERT INTO app.projects (
-                    id, title, description, budget_cap, status, owner_id, is_archived, created_at, updated_at
+                    id, title, description, budget_cap, status, owner_id, is_archived, deadline, created_at, updated_at
                 )
                 VALUES (
-                    @id, @title, @description, @budget_cap, @status, @owner_id, @is_archived, @created_at, @updated_at
+                    @id, @title, @description, @budget_cap, @status, @owner_id, @is_archived, @deadline, @created_at, @updated_at
                 );
 
                 INSERT INTO app.project_memberships (
@@ -408,6 +411,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             command.Parameters.AddWithValue("status", project.Status);
             command.Parameters.AddWithValue("owner_id", project.OwnerId);
             command.Parameters.AddWithValue("is_archived", project.IsArchived);
+            command.Parameters.AddWithValue("deadline", (object?)project.Deadline ?? DBNull.Value);
             command.Parameters.AddWithValue("created_at", now);
             command.Parameters.AddWithValue("updated_at", now);
 
@@ -565,7 +569,12 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             return rowAffected > 0;
         }
 
-        public async Task<bool> UpdateProjectAsync(Guid projectId, string title, string? description, decimal? budgetCap)
+        public async Task<bool> UpdateProjectAsync(
+            Guid projectId,
+            string title,
+            string? description,
+            decimal? budgetCap,
+            DateTimeOffset deadline)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
@@ -574,6 +583,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 SET title = @title,
                     description = @description,
                     budget_cap= @budget_cap,
+                    deadline = @deadline,
                     updated_at = now()
                 WHERE id = @id;
             ";
@@ -584,6 +594,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             command.Parameters.AddWithValue("title", title);
             command.Parameters.AddWithValue("description", description ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("budget_cap", budgetCap ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("deadline", deadline);
 
             var rowAffected = await command.ExecuteNonQueryAsync();
 
