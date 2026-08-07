@@ -44,6 +44,11 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreated 
             return;
         }
 
+        if (!deadline.trim()) {
+            setLocalError("Будь ласка, вкажіть дедлайн проєкту.");
+            return;
+        }
+
         let parsedDeadline = null;
         if (deadline.trim()) {
             parsedDeadline = new Date(deadline).toISOString();
