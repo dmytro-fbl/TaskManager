@@ -5,6 +5,7 @@ using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Repositories.TasksRepository;
 
+
 namespace TaskManager.API.GraphQL.Queries
 {
     [ExtendObjectType(OperationTypeNames.Query)]
@@ -96,6 +97,45 @@ namespace TaskManager.API.GraphQL.Queries
             }
 
             return userId;
+        }
+
+        [Authorize]
+        public async Task<IEnumerable<TaskAssignment>> GetTaskAssignmentsAsync(
+    Guid taskId,
+    ClaimsPrincipal claimsPrincipal,
+    [Service] ITaskRepository taskRepository,
+    [Service] IProjectRepository projectRepository,
+    [Service] IUserRepository userRepository)
+        {
+            var task = await taskRepository.GetTaskByIdAsync(taskId);
+
+            if (task == null)
+            {
+                throw new GraphQLException("Таску не знайдено.");
+            }
+
+            var userId = GetCurrentUserId(claimsPrincipal);
+            var currentUser = await userRepository.GetUserByIdAsync(userId);
+
+            if (currentUser == null)
+            {
+                throw new GraphQLException("Користувача не знайдено.");
+            }
+
+            var hasAccess = currentUser.IsAdmin ||
+                            await projectRepository.IsUserInProjectAsync(
+                                task.ProjectId,
+                                userId
+                            );
+
+            if (!hasAccess)
+            {
+                throw new GraphQLException(
+                    "У вас немає доступу до цієї таски."
+                );
+            }
+
+            return await taskRepository.GetTaskAssignmentsAsync(taskId);
         }
     }
 }
