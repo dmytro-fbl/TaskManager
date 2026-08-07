@@ -202,7 +202,25 @@ namespace TaskManager.API.Repositories.TasksRepository
                 value ?? DBNull.Value
             );
         }
+        public async Task<bool> IsProjectStatusAsync( Guid projectId, Guid statusId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
 
+            const string sql = @"
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM app.project_statuses
+                    WHERE project_id = @project_id
+                      AND id = @status_id
+                );";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("project_id", projectId);
+            command.Parameters.AddWithValue("status_id", statusId);
+
+            return (bool)(await command.ExecuteScalarAsync() ?? false);
+        }
         private static TaskItem MapTask(NpgsqlDataReader reader)
         {
             var assigneeIdOrdinal = reader.GetOrdinal("assignee_id");
