@@ -142,5 +142,47 @@ namespace TaskManager.API.GraphQL.Queries
             throw new GraphQLException("Неавторизований запит");
         }
 
+        [Authorize]
+        public async Task<IEnumerable<ProjectStatus>> GetProjectStatusesAsync(
+            Guid projectId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var userIdValue =
+                claimsPrincipal.FindFirst(
+                    ClaimTypes.NameIdentifier
+                )?.Value ??
+                claimsPrincipal.FindFirst("sub")?.Value;
+
+            if (!Guid.TryParse(userIdValue, out var userId))
+            {
+                throw new GraphQLException(
+                    "Не вдалося авторизувати користувача."
+                );
+            }
+
+            var currentUser = await userRepository.GetUserByIdAsync(userId);
+
+            if (currentUser == null)
+            {
+                throw new GraphQLException("Користувача не знайдено.");
+            }
+
+            var hasAccess = currentUser.IsAdmin ||
+                            await projectRepository.IsUserInProjectAsync(
+                                projectId,
+                                userId
+                            );
+
+            if (!hasAccess)
+            {
+                throw new GraphQLException(
+                    "У вас немає доступу до цього проєкту."
+                );
+            }
+
+            return await projectRepository.GetProjectStatusesAsync(projectId);
+        }
     }
 }

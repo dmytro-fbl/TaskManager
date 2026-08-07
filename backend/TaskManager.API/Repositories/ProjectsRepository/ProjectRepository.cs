@@ -643,5 +643,45 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             return result?.ToString();
         }
+
+        public async Task<IEnumerable<ProjectStatus>> GetProjectStatusesAsync(Guid projectId)
+        {
+            var statuses = new List<ProjectStatus>();
+
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT id, project_id, name, category, color,
+                       sort_order, is_final, created_at
+                FROM app.project_statuses
+                WHERE project_id = @project_id
+                ORDER BY sort_order;";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("project_id", projectId);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                statuses.Add(new ProjectStatus
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    ProjectId = reader.GetGuid(reader.GetOrdinal("project_id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
+                    Category = reader.GetString(reader.GetOrdinal("category")),
+                    Color = reader.IsDBNull(reader.GetOrdinal("color"))
+                        ? null
+                        : reader.GetString(reader.GetOrdinal("color")),
+                    SortOrder = reader.GetInt32(reader.GetOrdinal("sort_order")),
+                    IsFinal = reader.GetBoolean(reader.GetOrdinal("is_final")),
+                    CreatedAt = reader.GetFieldValue<DateTimeOffset>(
+                        reader.GetOrdinal("created_at")
+                    )
+                });
+            }
+
+            return statuses;
+        }
     }
 }
