@@ -39,7 +39,10 @@ export const UPDATE_PROJECT = gql`
 `;
 
 export const REMOVE_PROJECT_MEMBER = gql`
-  mutation RemoveProjectMember($projectId: UUID!, $userId: UUID!) {
-    removeProjectMember(projectId: $projectId, userId: $userId)
+  mutation RemoveProjectMember($projectId: UUID!, $memberUserId: UUID!) {
+    removeProjectMember(
+      projectId: $projectId, 
+      memberUserId: $memberUserId
+    )
   }
 `;
