@@ -350,5 +350,25 @@ namespace TaskManager.API.Repositories.TasksRepository
                     )
             };
         }
+
+        public async Task<bool> HasUserTasksInProjectAsync(Guid projectId, Guid userId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT exists(
+                    SELECT 1
+                    FROM app.tasks
+                    WHERE project_id = @project_id
+                            AND (assignee_id = @user_id OR author_id = @user_id)
+                );
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("project_id", projectId);
+            command.Parameters.AddWithValue("user_id", userId);
+            var result = await command.ExecuteScalarAsync();
+            return result is bool hasTasks && hasTasks;
+        }
     }
 }

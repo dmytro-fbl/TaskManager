@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle } from "react";
+import React, { forwardRef, useImperativeHandle, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { gql } from "@apollo/client";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
@@ -65,6 +65,8 @@ interface ProjectMembersTableProps {
 
 export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, ProjectMembersTableProps>(
     ({ projectId, isArchived = false }, ref) => {
+
+        const [actionError, setActionError] = useState<string | null>(null);
         const {
             data,
             loading,
@@ -97,6 +99,7 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
 
         const handleChangeRole = async (membership: ProjectMembership, newRole: string) => {
             if (newRole === membership.projectRole) return;
+            setActionError(null);
 
             if (!canManageRoles) {
                 alert("Лише менеджер або адміністратор може змінювати ролі учасників.");
@@ -129,13 +132,14 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
         };
 
         const handleRemoveMember = async (membership: ProjectMembership) => {
+            setActionError(null);
             if (!canManageRoles) {
-                alert("Лише менеджер або адміністратор може видаляти учасників.");
+                setActionError("Лише менеджер або адміністратор може видаляти учасників.");
                 return;
             }
 
             if (membership.userId === currentUserId) {
-                alert("Ви не можете видалити самі себе з проєкту.");
+                setActionError("Ви не можете видалити самі себе з проєкту.");
                 return;
             }
 
@@ -147,13 +151,13 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                 await removeMember({
                     variables: {
                         projectId,
-                        userId: membership.userId,
+                        memberUserId: membership.userId,
                     },
                 });
 
                 await refetch();
             } catch (err: any) {
-                alert(getFriendlyErrorMessage(err));
+                setActionError(getFriendlyErrorMessage(err));
             }
         };
 
@@ -182,9 +186,22 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                     </span>
                 </div>
 
+                {actionError && (
+                    <div className="px-6 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700 flex justify-between items-center">
+                        <span>{actionError}</span>
+                        <button 
+                            onClick={() => setActionError(null)} 
+                            className="text-red-400 hover:text-red-700 transition-colors font-bold ml-4"
+                            title="Сховати"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )}
+
                 {!canManageRoles && !isArchived && memberships.length > 0 && (
                     <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-100 text-sm text-yellow-800">
-                        Лише менеджер може змінювати ролі учасників.
+                        Лише менеджер може змінювати ролі та склад учасників.
                     </div>
                 )}
 
