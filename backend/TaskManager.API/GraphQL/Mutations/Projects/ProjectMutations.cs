@@ -28,6 +28,11 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 throw new GraphQLException("Назва проекту не може бути порожньою.");
             }
 
+            if (input.Deadline.Date < DateTimeOffset.UtcNow.Date)
+            {
+                throw new GraphQLException("Дедлайн не може бути встановлений у минулому.");
+            }
+
             var newProject = new Project
             {
                 Title = input.Title.Trim(),
@@ -36,8 +41,10 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 Status = "active",
                 OwnerId = ownerId,
                 IsArchived = false,
+                Deadline = input.Deadline,
                 CreatedAt = DateTimeOffset.UtcNow,
             };
+            
 
             var createdProjectId = await projectRepository.CreateProjectWithOwnerAsync(newProject);
 
@@ -83,6 +90,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             string title,
             string? description,
             decimal? budgetCap,
+            DateTimeOffset deadline,
             ClaimsPrincipal claimsPrincipal,
             [Service] IProjectRepository projectRepository,
             [Service] IUserRepository userRepository)
@@ -95,6 +103,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 var currentUser = await userRepository.GetUserByIdAsync(userId);
                 if (currentUser == null)
                     throw new GraphQLException("Даний користувач не дійсний");
+                if (deadline == null)
+                    throw new GraphQLException("Дедлайн некоректний");
 
                 var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
                 if (currentProject == null || currentProject.Status == "archived")
@@ -107,7 +117,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 if (!hasAccess)
                     throw new GraphQLException("У вас немає прав на редагування цього проекту.");
 
-                return await projectRepository.UpdateProjectAsync(projectId, title, description, budgetCap);
+                return await projectRepository.UpdateProjectAsync(projectId, title, description, budgetCap, deadline);
             }
             throw new GraphQLException("Помилка авторизації.");
         }

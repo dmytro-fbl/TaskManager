@@ -17,23 +17,25 @@ interface Project {
     title: string;
     description?: string | null;
     budgetCap?: number | null;
+    deadline?: string | null;
     status: string;
     isArchived: boolean;
     createdAt: string;
 }
 
 const GET_PROJECT_DETAILS = gql`
-    query GetProjectDetails($id: UUID!) {
-        project(id: $id) {
-            id
-            title
-            description
-            budgetCap
-            status
-            isArchived
-            createdAt
-        }
+  query GetProjectDetails($id: UUID!) {
+    project(id: $id) {
+      id
+      title
+      description
+      budgetCap
+      deadline
+      status
+      isArchived
+      createdAt
     }
+  }
 `;
 
 export const ProjectDetailsPage: React.FC = () => {
@@ -150,13 +152,19 @@ export const ProjectDetailsPage: React.FC = () => {
                         : "Опис проєкту відсутній."}
                 </p>
 
-                <div className="border-t border-gray-100 pt-4 text-sm font-medium text-text-main">
-                    Бюджетний ліміт:{" "}
-                    {project.budgetCap != null
-                        ? `$${project.budgetCap}`
-                        : "Не обмежено"}
+            <div className="flex flex-col sm:flex-row sm:gap-8 text-sm text-text-main font-medium border-t pt-4 border-gray-100">
+                <div>
+                    <span className="text-text-muted mr-1">Бюджетний ліміт:</span> 
+                    {project.budgetCap != null ? `$${project.budgetCap}` : "Не обмежено"}
+                </div>
+                <div>
+                    <span className="text-text-muted mr-1">Дедлайн:</span>
+                    {project.deadline 
+                        ? new Date(project.deadline).toLocaleDateString('uk-UA') 
+                        : "Не вказано"}
                 </div>
             </div>
+        </div>
 
             <section className="space-y-6">
                 <h2 className="text-xl font-bold text-text-main">

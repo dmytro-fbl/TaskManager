@@ -625,3 +625,6 @@ VALUES (
 ALTER TABLE app.users
 ADD COLUMN refresh_token TEXT,
 ADD COLUMN refresh_token_expiry_time TIMESTAMPTZ;
+
+ALTER TABLE app.projects
+ADD COLUMN deadline timestamptz;

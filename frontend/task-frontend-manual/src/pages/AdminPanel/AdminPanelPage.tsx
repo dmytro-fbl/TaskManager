@@ -2,7 +2,7 @@ import { useState } from "react";
 import AdminSidebar from './components/AdminSidebar';
 import UsersTab from "./components/tabs/UsersTab";
 import PendingInviteTab from "./components/tabs/PendingInviteTab";
-import { CreateProjectForm } from "../Dashboard/Project/CreateProjectForm";
+import { CreateProjectForm } from "../Project/components/CreateProjectForm";
 import ProjectsTab from "../AdminPanel/components/tabs/ProjectsTab"
 
 
