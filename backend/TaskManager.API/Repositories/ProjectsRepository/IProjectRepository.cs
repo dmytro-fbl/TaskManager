@@ -36,5 +36,8 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
         Task<string?> GetUserProjectRoleAsync(Guid projectId, Guid userId);
         Task<IEnumerable<ProjectStatus>> GetProjectStatusesAsync(Guid projectId );
+
+        Task<bool> RemoveMemberAsync(Guid projectId, Guid userId);
+
     }
 }

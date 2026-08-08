@@ -694,5 +694,24 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             return statuses;
         }
+
+        public async Task<bool> RemoveMemberAsync(Guid projectId, Guid userId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                DELETE FROM app.project_memberships 
+                WHERE project_id = @project_id AND user_id = @user_id;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("project_id", projectId);
+            command.Parameters.AddWithValue("user_id", userId);
+
+            int rowAffected = await command.ExecuteNonQueryAsync();
+
+            return rowAffected > 0;
+
+        }
     }
 }
