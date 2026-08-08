@@ -35,5 +35,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         Task<bool> UpdateProjectAsync(Guid projectId, string title, string? description, decimal? budgetCap, DateTimeOffset deadline);
 
         Task<string?> GetUserProjectRoleAsync(Guid projectId, Guid userId);
+        Task<IEnumerable<ProjectStatus>> GetProjectStatusesAsync(Guid projectId );
     }
 }

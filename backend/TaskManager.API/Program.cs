@@ -9,6 +9,7 @@ using TaskManager.API.GraphQL.Queries;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Services;
+using TaskManager.API.Repositories.TasksRepository;
 
 namespace TaskManager.API
 {
@@ -42,10 +43,14 @@ namespace TaskManager.API
 
                 .AddTypeExtension<AuthMutations>()
                 .AddTypeExtension<ProjectQuery>()
+                .AddTypeExtension<TaskQuery>()
                 .AddTypeExtension<ProjectMutations>()
+                .AddTypeExtension<TaskMutations>()
+                .AddTypeExtension<TaskAssignmentMutations>()
                 .AddTypeExtension<ProjectInviteMutations>()
                 .AddTypeExtension<ProjectRoleMutations>()
-                .AddTypeExtension<ProjectMembershipExtensions>();
+                .AddTypeExtension<ProjectMembershipExtensions>()
+
             ;
 
 
@@ -84,6 +89,9 @@ namespace TaskManager.API
 
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+            builder.Services.AddScoped<ITaskRepository, TaskRepository>();
             builder.Services.AddScoped<IUserServices, UserServices>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
