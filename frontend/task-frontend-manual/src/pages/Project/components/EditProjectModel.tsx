@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation } from '@apollo/client/react';
-import { UPDATE_PROJECT } from '../../graphql/mutations/projectMutation';
-import { getFriendlyErrorMessage } from '../../utils/errorHandler';
-import ErrorMessage from '../ui/ErrorMessage';
+import { UPDATE_PROJECT } from '../../../graphql/mutations/projectMutation';
+import { getFriendlyErrorMessage } from '../../../utils/errorHandler';
+import ErrorMessage from '../../../components/ui/ErrorMessage';
 
 interface EditProjectModalProps {
   isOpen: boolean;

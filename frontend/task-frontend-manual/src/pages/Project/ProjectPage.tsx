@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { useQuery } from "@apollo/client/react";
 import { gql } from "@apollo/client";
 import { useNavigate } from "react-router-dom"; // ДОДАНО ІМПОРТ
-import { CreateProjectForm } from "./CreateProjectForm";
-import ErrorMessage from "../../../components/ui/ErrorMessage";
-import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
+import { CreateProjectForm } from "./components/CreateProjectForm";
+import ErrorMessage from "../../components/ui/ErrorMessage";
+import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
 interface Project {
     id: string;

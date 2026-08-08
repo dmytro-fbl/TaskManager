@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useMutation } from '@apollo/client/react';
 import { LOGOUT_MUTATION } from "../../graphql/mutations/logoutMutations";
-import { ProjectsPage } from "./Project/ProjectPage";
+import { ProjectsPage } from "../Project/ProjectPage";
 
 export default function DashboardPage() {
  
