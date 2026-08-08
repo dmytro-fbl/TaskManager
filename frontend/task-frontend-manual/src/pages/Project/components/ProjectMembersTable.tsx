@@ -60,10 +60,11 @@ const GET_PROJECT_MEMBERSHIPS = gql`
 
 interface ProjectMembersTableProps {
     projectId: string;
+    isArchived?: boolean; 
 }
 
 export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, ProjectMembersTableProps>(
-    ({ projectId }, ref) => {
+    ({ projectId, isArchived = false }, ref) => {
         const {
             data,
             loading,
@@ -85,12 +86,10 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
         });
 
         const [updateRole, { loading: updating }] = useMutation(UPDATE_PROJECT_MEMBER_ROLE);
-
         const [removeMember, { loading: removing }] = useMutation(REMOVE_PROJECT_MEMBER);
 
         const memberships = data?.projectMemberships ?? [];
         const currentUserId = meData?.me?.id ?? null;
-
         const isAdmin = meData?.me?.isAdmin ?? false;
 
         const currentUserMembership = memberships.find((m) => m.userId === currentUserId);
@@ -183,7 +182,7 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                     </span>
                 </div>
 
-                {!canManageRoles && memberships.length > 0 && (
+                {!canManageRoles && !isArchived && memberships.length > 0 && (
                     <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-100 text-sm text-yellow-800">
                         Лише менеджер може змінювати ролі учасників.
                     </div>
@@ -203,7 +202,7 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                         <tbody className="divide-y divide-gray-100">
                             {memberships.map((m) => {
                                 const isSelf = m.userId === currentUserId;
-                                const isDisabled = updating || removing || !canManageRoles || isSelf;
+                                const isDisabled = updating || removing || !canManageRoles || isSelf || isArchived;
 
                                 return (
                                     <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
@@ -235,7 +234,7 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                                                     <option value="contributor">Виконавець</option>
                                                 </select>
 
-                                                {isSelf && (
+                                                {isSelf && !isArchived && (
                                                     <span className="text-xs text-gray-500">
                                                         Ви не можете змінювати власну роль
                                                     </span>
@@ -265,7 +264,7 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
 
                             {memberships.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="p-8 text-center text-text-muted">
+                                    <td colSpan={5} className="p-8 text-center text-text-muted">
                                         Учасників ще немає
                                     </td>
                                 </tr>

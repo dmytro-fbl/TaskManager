@@ -7,7 +7,7 @@ import MainLayout from './components/layout/MainLayout';
 import Adminguard from './components/layout/AdminGuard';
 import ProtectedRoute from './components/ProtectedRoute';
 import { ProjectsPage } from './pages/Project/ProjectPage';
-import { ProjectDetailsPage } from './pages/Project/ProjectDetailsPage';
+import { ProjectDetailsPage } from './pages/Dashboard/Project/ProjectDetailsPage';
 
 export default function App() {
   return (

@@ -178,6 +178,7 @@ type CreateTaskResponse = {
 
 type Props = {
     projectId: string;
+    isArchived?: boolean;
 };
 
 function toGraphQLDate(value: string): string | null {
@@ -196,9 +197,8 @@ function formatDate(value?: string | null): string {
     return new Date(value).toLocaleDateString("uk-UA");
 }
 
-export const ProjectTasks: React.FC<Props> = ({
-                                                  projectId,
-                                              }) => {
+// ДОДАНО isArchived = false у параметри
+export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false }) => {
     const [title, setTitle] = useState("");
     const [notes, setNotes] = useState("");
     const [statusId, setStatusId] = useState("");
@@ -398,8 +398,8 @@ export const ProjectTasks: React.FC<Props> = ({
         return (
             <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-red-700">
                 {getFriendlyErrorMessage(
-                        membershipsQuery.error
-                    ) ??
+                    membershipsQuery.error
+                ) ??
                     "Не вдалося завантажити учасників проєкту."}
             </div>
         );
@@ -407,183 +407,186 @@ export const ProjectTasks: React.FC<Props> = ({
 
     return (
         <section className="space-y-6">
-            <div className="rounded-xl border border-gray-100 bg-bg-card p-6 shadow-sm">
-                <h2 className="mb-5 text-xl font-bold text-text-main">
-                    Створити таску
-                </h2>
+            {/* ДОДАНО: Форма створення таски прихована, якщо проєкт в архіві */}
+            {!isArchived && (
+                <div className="rounded-xl border border-gray-100 bg-bg-card p-6 shadow-sm">
+                    <h2 className="mb-5 text-xl font-bold text-text-main">
+                        Створити таску
+                    </h2>
 
-                {formError && (
-                    <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-                        {formError}
-                    </div>
-                )}
+                    {formError && (
+                        <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                            {formError}
+                        </div>
+                    )}
 
-                <form
-                    onSubmit={handleCreateTask}
-                    className="grid gap-4 md:grid-cols-2"
-                >
-                    <div className="md:col-span-2">
-                        <label className="mb-1 block text-sm font-medium text-text-main">
-                            Назва
-                        </label>
-
-                        <input
-                            value={title}
-                            onChange={(event) =>
-                                setTitle(event.target.value)
-                            }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                            placeholder="Наприклад: Додати авторизацію"
-                        />
-                    </div>
-
-                    <div className="md:col-span-2">
-                        <label className="mb-1 block text-sm font-medium text-text-main">
-                            Опис
-                        </label>
-
-                        <textarea
-                            value={notes}
-                            onChange={(event) =>
-                                setNotes(event.target.value)
-                            }
-                            rows={3}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                            placeholder="Опис таски"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-text-main">
-                            Статус
-                        </label>
-
-                        <select
-                            value={
-                                statusId ||
-                                statuses[0]?.id ||
-                                ""
-                            }
-                            onChange={(event) =>
-                                setStatusId(event.target.value)
-                            }
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
-                        >
-                            {statuses.map((status) => (
-                                <option
-                                    key={status.id}
-                                    value={status.id}
-                                >
-                                    {status.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-text-main">
-                            Пріоритет
-                        </label>
-
-                        <select
-                            value={priority}
-                            onChange={(event) =>
-                                setPriority(event.target.value)
-                            }
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
-                        >
-                            <option value="low">
-                                Низький
-                            </option>
-                            <option value="medium">
-                                Середній
-                            </option>
-                            <option value="high">
-                                Високий
-                            </option>
-                            <option value="critical">
-                                Критичний
-                            </option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-text-main">
-                            Дедлайн
-                        </label>
-
-                        <input
-                            type="date"
-                            value={dueDate}
-                            onChange={(event) =>
-                                setDueDate(event.target.value)
-                            }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-text-main">
-                            Виконавець
-                        </label>
-
-                        <select
-                            value={assigneeId}
-                            onChange={(event) =>
-                                setAssigneeId(event.target.value)
-                            }
-                            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
-                        >
-                            <option value="">
-                                Не призначати
-                            </option>
-
-                            {memberships.map((membership) => (
-                                <option
-                                    key={membership.userId}
-                                    value={membership.userId}
-                                >
-                                    {membership.user.name} —{" "}
-                                    {membership.user.email}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {assigneeId && (
-                        <div>
+                    <form
+                        onSubmit={handleCreateTask}
+                        className="grid gap-4 md:grid-cols-2"
+                    >
+                        <div className="md:col-span-2">
                             <label className="mb-1 block text-sm font-medium text-text-main">
-                                Орієнтовні години
+                                Назва
                             </label>
 
                             <input
-                                type="number"
-                                min="0.1"
-                                step="0.1"
-                                value={estimatedHours}
+                                value={title}
                                 onChange={(event) =>
-                                    setEstimatedHours(
-                                        event.target.value
-                                    )
+                                    setTitle(event.target.value)
+                                }
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                placeholder="Наприклад: Додати авторизацію"
+                            />
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <label className="mb-1 block text-sm font-medium text-text-main">
+                                Опис
+                            </label>
+
+                            <textarea
+                                value={notes}
+                                onChange={(event) =>
+                                    setNotes(event.target.value)
+                                }
+                                rows={3}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                placeholder="Опис таски"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-text-main">
+                                Статус
+                            </label>
+
+                            <select
+                                value={
+                                    statusId ||
+                                    statuses[0]?.id ||
+                                    ""
+                                }
+                                onChange={(event) =>
+                                    setStatusId(event.target.value)
+                                }
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
+                            >
+                                {statuses.map((status) => (
+                                    <option
+                                        key={status.id}
+                                        value={status.id}
+                                    >
+                                        {status.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-text-main">
+                                Пріоритет
+                            </label>
+
+                            <select
+                                value={priority}
+                                onChange={(event) =>
+                                    setPriority(event.target.value)
+                                }
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
+                            >
+                                <option value="low">
+                                    Низький
+                                </option>
+                                <option value="medium">
+                                    Середній
+                                </option>
+                                <option value="high">
+                                    Високий
+                                </option>
+                                <option value="critical">
+                                    Критичний
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-text-main">
+                                Дедлайн
+                            </label>
+
+                            <input
+                                type="date"
+                                value={dueDate}
+                                onChange={(event) =>
+                                    setDueDate(event.target.value)
                                 }
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2"
                             />
                         </div>
-                    )}
 
-                    <div className="md:col-span-2">
-                        <button
-                            type="submit"
-                            disabled={creating}
-                            className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            {creating
-                                ? "Створення..."
-                                : "Створити таску"}
-                        </button>
-                    </div>
-                </form>
-            </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-text-main">
+                                Виконавець
+                            </label>
+
+                            <select
+                                value={assigneeId}
+                                onChange={(event) =>
+                                    setAssigneeId(event.target.value)
+                                }
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
+                            >
+                                <option value="">
+                                    Не призначати
+                                </option>
+
+                                {memberships.map((membership) => (
+                                    <option
+                                        key={membership.userId}
+                                        value={membership.userId}
+                                    >
+                                        {membership.user.name} —{" "}
+                                        {membership.user.email}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {assigneeId && (
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-text-main">
+                                    Орієнтовні години
+                                </label>
+
+                                <input
+                                    type="number"
+                                    min="0.1"
+                                    step="0.1"
+                                    value={estimatedHours}
+                                    onChange={(event) =>
+                                        setEstimatedHours(
+                                            event.target.value
+                                        )
+                                    }
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                                />
+                            </div>
+                        )}
+
+                        <div className="md:col-span-2">
+                            <button
+                                type="submit"
+                                disabled={creating}
+                                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {creating
+                                    ? "Створення..."
+                                    : "Створити таску"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
 
             <div className="rounded-xl border border-gray-100 bg-bg-card shadow-sm">
                 <div className="border-b border-gray-100 p-6">
@@ -610,7 +613,7 @@ export const ProjectTasks: React.FC<Props> = ({
                             return (
                                 <article
                                     key={task.id}
-                                    className="space-y-3 p-6"
+                                    className="space-y-3 p-6 hover:bg-gray-50/50 transition-colors"
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-4">
                                         <div>
@@ -633,7 +636,8 @@ export const ProjectTasks: React.FC<Props> = ({
                                                     event.target.value
                                                 )
                                             }
-                                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+                                            disabled={isArchived}
+                                            className={`rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm ${isArchived ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                                             style={{
                                                 borderColor:
                                                     status?.color ??
@@ -680,7 +684,7 @@ export const ProjectTasks: React.FC<Props> = ({
                                     </div>
 
                                     <div className="text-xs text-text-muted">
-                                        Пріоритет: {task.priority}
+                                        Пріоритет: <span className="uppercase">{task.priority}</span>
                                     </div>
                                 </article>
                             );
