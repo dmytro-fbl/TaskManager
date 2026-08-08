@@ -2,17 +2,18 @@ import React, { useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react"
-import { ProjectMembersTable } from "./Dashboard/Project/ProjectMembersTable";
-import { AddUserToProjectForm } from "./Dashboard/Project/InviteExistingUserForm";
-import ErrorMessage from "../components/ui/ErrorMessage";
-import { getFriendlyErrorMessage } from "../utils/errorHandler";
-import { EditProjectModal } from "../components/projects/EditProjectModel";
+import { ProjectMembersTable } from "./components/ProjectMembersTable";
+import { AddUserToProjectForm } from "./components/InviteExistingUserForm";
+import ErrorMessage from "../../components/ui/ErrorMessage";
+import { getFriendlyErrorMessage } from "../../utils/errorHandler";
+import { EditProjectModal } from "./components/EditProjectModel";
 
 interface Project {
     id: string;
     title: string;
     description?: string | null;
     budgetCap?: number | null;
+    deadline?: string | null;
     status: string;
     isArchived: boolean;
     createdAt: string;
@@ -25,6 +26,7 @@ const GET_PROJECT_DETAILS = gql`
       title
       description
       budgetCap
+      deadline
       status
       isArchived
       createdAt

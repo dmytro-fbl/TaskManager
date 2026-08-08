@@ -6,8 +6,8 @@ import AdminPanelPage from './pages/AdminPanel/AdminPanelPage'
 import MainLayout from './components/layout/MainLayout';
 import Adminguard from './components/layout/AdminGuard';
 import ProtectedRoute from './components/ProtectedRoute';
-import { ProjectsPage } from './pages/Dashboard/Project/ProjectPage';
-import { ProjectDetailsPage } from './pages/ProjectDetailsPage';
+import { ProjectsPage } from './pages/Project/ProjectPage';
+import { ProjectDetailsPage } from './pages/Project/ProjectDetailsPage';
 
 export default function App() {
   return (

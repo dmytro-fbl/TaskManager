@@ -10,6 +10,7 @@ export const GET_ADMIN_PROJECTS = gql`
       status
       isArchived
       createdAt
+      deadline
       ownerId
       ownerName
       ownerEmail

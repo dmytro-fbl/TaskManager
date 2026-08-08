@@ -196,6 +196,36 @@ create table if not exists app.tasks (
         check (due_date is null or start_date is null or due_date >= start_date)
 );
 
+create table if not exists app.task_assignments (
+    id uuid primary key default gen_random_uuid(),
+    task_id uuid not null,
+    user_id uuid not null,
+    estimated_hours numeric(8,2) not null,
+    assigned_by uuid not null,
+    assigned_at timestamptz not null default now(),
+
+    constraint fk_task_assignments_task
+        foreign key (task_id)
+        references app.tasks(id)
+        on delete cascade,
+
+    constraint fk_task_assignments_user
+        foreign key (user_id)
+        references app.users(id)
+        on delete cascade,
+
+    constraint fk_task_assignments_assigned_by
+        foreign key (assigned_by)
+        references app.users(id)
+        on delete restrict,
+
+    constraint uq_task_assignments_task_user
+        unique (task_id, user_id),
+
+    constraint chk_task_assignments_estimated_hours
+        check (estimated_hours > 0)
+);
+
 create table if not exists app.task_comments (
     id uuid primary key default gen_random_uuid(),
     task_id uuid not null,
@@ -481,6 +511,15 @@ create index if not exists idx_tasks_status_id
 create index if not exists idx_tasks_due_date
     on app.tasks(due_date);
 
+create index if not exists idx_task_assignments_task_id
+    on app.task_assignments(task_id);
+
+create index if not exists idx_task_assignments_user_id
+    on app.task_assignments(user_id);
+
+create index if not exists idx_task_assignments_assigned_by
+    on app.task_assignments(assigned_by);
+
 create index if not exists idx_task_comments_task_id
     on app.task_comments(task_id);
 
@@ -586,3 +625,6 @@ VALUES (
 ALTER TABLE app.users
 ADD COLUMN refresh_token TEXT,
 ADD COLUMN refresh_token_expiry_time TIMESTAMPTZ;
+
+ALTER TABLE app.projects
+ADD COLUMN deadline timestamptz;
