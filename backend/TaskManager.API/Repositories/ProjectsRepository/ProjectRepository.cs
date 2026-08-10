@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using Npgsql;
 using TaskManager.API.DTOs;
+using TaskManager.API.DTOs.Projects;
 using TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
 
@@ -622,7 +623,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 WHERE id = @id;
             ";
 
-            await using var command = new NpgsqlCommand( sql, connection);
+            await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("id", projectId);
             command.Parameters.AddWithValue("title", title);
@@ -645,7 +646,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 WHERE project_id = @project_id AND user_id = @user_id;
             ";
 
-            await using var command = new NpgsqlCommand( sql, connection);
+            await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("project_id", projectId);
             command.Parameters.AddWithValue("user_id", userId);
@@ -712,6 +713,86 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             return rowAffected > 0;
 
+        }
+
+        public async Task AddDefaultProjectRolesAsync(Guid projectId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            var defaultRoles = new[]
+            {
+                new { Name = "Backend Developer", Code = "backend", Rate = 40.00m },
+                new { Name = "Frontend Developer", Code = "frontend", Rate = 35.00m },
+                new { Name = "UI/UX Designer", Code = "design", Rate = 30.00m },
+                new { Name = "QA Engineer", Code = "qa", Rate = 25.00m },
+                new { Name = "Project Manager", Code = "pm", Rate = 50.00m }
+            };
+
+            foreach (var role in defaultRoles)
+            {
+                var roleId = Guid.NewGuid();
+
+                const string insertLabelSql = @"
+                    INSERT INTO  app.project_role_labels (id, project_id, name, code)
+                    VALUES (@id, @project_id, @name, @code);
+                ";
+                await using var labelCmd = new NpgsqlCommand(insertLabelSql, connection);
+
+                labelCmd.Parameters.AddWithValue("id", roleId);
+                labelCmd.Parameters.AddWithValue("project_id", projectId);
+                labelCmd.Parameters.AddWithValue("name", role.Name);
+                labelCmd.Parameters.AddWithValue("code", role.Code);
+
+                await labelCmd.ExecuteNonQueryAsync();
+
+                const string insertRateSql = @"
+                    INSERT INTO app.project_role_rates (role_label_id, hourly_rate, effective_from)
+                    VALUES (@role_label_id, @hourly_rate, @effective_from);
+                ";
+
+                await using var rateCmd = new NpgsqlCommand(insertRateSql, connection);
+
+                rateCmd.Parameters.AddWithValue("role_label_id", roleId);
+                rateCmd.Parameters.AddWithValue("hourly_rate", role.Rate);
+                rateCmd.Parameters.AddWithValue("effective_from", DateTimeOffset.UtcNow);
+
+                await rateCmd.ExecuteNonQueryAsync();
+
+            }
+
+        }
+
+        public async Task<IEnumerable<ProjectRoleDTO>> GetProjectRolesAsync(Guid projectId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            var roles = new List<ProjectRoleDTO>();
+
+            const string sql = @"
+                SELECT l.id, l.name, r.hourly_rate
+                FROM app.project_role_labels l 
+                JOIN app.project_role_rates r ON l.id = r.role_label_id
+                WHERE l.project_id = @project_id
+                ORDER BY l.name;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("project_id", projectId);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                roles.Add(new ProjectRoleDTO
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
+                    HourlyRate = reader.GetDecimal(reader.GetOrdinal("hourly_rate"))
+                });
+
+            }
+
+            return roles;
         }
     }
 }

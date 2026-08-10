@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 using HotChocolate.Authorization;
-using TaskManager.API.DTOs;
+using TaskManager.API.DTOs.Projects;
 using TaskManager.API.Models.ProjectsTables;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
