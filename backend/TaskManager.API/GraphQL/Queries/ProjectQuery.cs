@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using HotChocolate.Authorization;
 using TaskManager.API.DTOs;
+using TaskManager.API.DTOs.Projects;
 using TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
 using TaskManager.API.Repositories;
@@ -183,6 +184,35 @@ namespace TaskManager.API.GraphQL.Queries
             }
 
             return await projectRepository.GetProjectStatusesAsync(projectId);
+        }
+
+        [Authorize]
+        public async Task<IEnumerable<ProjectRoleDTO>> GetProjectRolesAsync(
+            Guid projectId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var userIdValue = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                                ?? claimsPrincipal.FindFirst("sub")?.Value;
+
+            if (!Guid.TryParse(userIdValue, out var userId))
+                throw new GraphQLException("Помилка авторизації.");
+
+            var currentUser = await userRepository.GetUserByIdAsync(userId);
+
+            if (currentUser == null)
+                throw new GraphQLException("Користувача не знайдено.");
+
+            var hasAccess = currentUser.IsAdmin || await projectRepository.IsUserInProjectAsync(projectId, userId);
+
+
+            if (!hasAccess)
+                throw new GraphQLException("У вас немає доступу до цього проекту.");
+
+            return await projectRepository.GetProjectRolesAsync(projectId);
+
+
         }
     }
 }
