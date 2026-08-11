@@ -1,4 +1,5 @@
 ﻿using TaskManager.API.DTOs;
+using TaskManager.API.DTOs.Projects;
 using TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
 
@@ -38,6 +39,9 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         Task<IEnumerable<ProjectStatus>> GetProjectStatusesAsync(Guid projectId );
 
         Task<bool> RemoveMemberAsync(Guid projectId, Guid userId);
+        Task AddDefaultProjectRolesAsync(Guid projectId);
+
+        Task<IEnumerable<ProjectRoleDTO>> GetProjectRolesAsync(Guid projectId);
 
     }
 }

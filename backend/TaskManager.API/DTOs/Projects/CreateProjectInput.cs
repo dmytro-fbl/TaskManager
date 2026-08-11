@@ -1,4 +1,4 @@
-﻿namespace TaskManager.API.DTOs
+﻿namespace TaskManager.API.DTOs.Projects
 {
     public record CreateProjectInput(
         string Title,
