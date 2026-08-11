@@ -2,6 +2,7 @@ import React, {
     FormEvent,
     useMemo,
     useState,
+    useEffect 
 } from "react";
 import { gql } from "@apollo/client";
 import {
@@ -55,6 +56,16 @@ const GET_PROJECT_MEMBERSHIPS = gql`
                 email
                 isAdmin
             }
+        }
+    }
+`;
+
+const GET_PROJECT_ROLES = gql`
+    query GetProjectRoles($projectId: UUID!) {
+        projectRoles(projectId: $projectId) {
+            id
+            name
+            hourlyRate
         }
     }
 `;
@@ -146,6 +157,12 @@ type Membership = {
     };
 };
 
+type ProjectRole = {
+    id: string;
+    name: string;
+    hourlyRate: number;
+};
+
 type CreateTaskInput = {
     projectId: string;
     statusId: string;
@@ -159,21 +176,7 @@ type CreateTaskInput = {
 };
 
 type CreateTaskResponse = {
-    createTask: {
-        id: string;
-        projectId: string;
-        assigneeId?: string | null;
-        statusId: string;
-        title: string;
-        notes?: string | null;
-        priority: string;
-        startDate?: string | null;
-        dueDate?: string | null;
-        estimatedBudget?: number | null;
-        estimatedUnit?: string | null;
-        createdAt: string;
-        updatedAt: string;
-    } | null;
+    createTask: Task | null;
 };
 
 type Props = {
@@ -185,7 +188,6 @@ function toGraphQLDate(value: string): string | null {
     if (!value) {
         return null;
     }
-
     return `${value}T00:00:00.000Z`;
 }
 
@@ -193,11 +195,9 @@ function formatDate(value?: string | null): string {
     if (!value) {
         return "—";
     }
-
     return new Date(value).toLocaleDateString("uk-UA");
 }
 
-// ДОДАНО isArchived = false у параметри
 export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false }) => {
     const [title, setTitle] = useState("");
     const [notes, setNotes] = useState("");
@@ -205,84 +205,70 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
     const [priority, setPriority] = useState("medium");
     const [dueDate, setDueDate] = useState("");
     const [assigneeId, setAssigneeId] = useState("");
-    const [estimatedHours, setEstimatedHours] = useState("1");
+    const [estimatedHours, setEstimatedHours] = useState("");
+    
+    const [selectedRoleId, setSelectedRoleId] = useState("");
+    const [estimatedBudget, setEstimatedBudget] = useState<number | "">("");
+    
     const [formError, setFormError] = useState("");
 
-    const tasksQuery = useQuery<{
-        projectTasks: Task[];
-    }>(GET_PROJECT_TASKS, {
-        variables: {
-            projectId,
-        },
+    const tasksQuery = useQuery<{ projectTasks: Task[] }>(GET_PROJECT_TASKS, {
+        variables: { projectId },
         fetchPolicy: "network-only",
     });
 
-    const statusesQuery = useQuery<{
-        projectStatuses: ProjectStatus[];
-    }>(GET_PROJECT_STATUSES, {
-        variables: {
-            projectId,
-        },
+    const statusesQuery = useQuery<{ projectStatuses: ProjectStatus[] }>(GET_PROJECT_STATUSES, {
+        variables: { projectId },
         fetchPolicy: "network-only",
     });
 
-    const membershipsQuery = useQuery<{
-        projectMemberships: Membership[];
-    }>(GET_PROJECT_MEMBERSHIPS, {
-        variables: {
-            projectId,
-        },
+    const membershipsQuery = useQuery<{ projectMemberships: Membership[] }>(GET_PROJECT_MEMBERSHIPS, {
+        variables: { projectId },
         fetchPolicy: "network-only",
     });
 
-    const [createTask, { loading: creating }] = useMutation<
-        CreateTaskResponse,
-        { input: CreateTaskInput }
-    >(CREATE_TASK);
+    const rolesQuery = useQuery<{ projectRoles: ProjectRole[] }>(GET_PROJECT_ROLES, {
+        variables: { projectId },
+        fetchPolicy: "network-only",
+    });
 
-    const [assignUserToTask] = useMutation(
-        ASSIGN_USER_TO_TASK
-    );
+    const [createTask, { loading: creating }] = useMutation<CreateTaskResponse, { input: CreateTaskInput }>(CREATE_TASK);
+    const [assignUserToTask] = useMutation(ASSIGN_USER_TO_TASK);
+    const [updateTaskStatus] = useMutation(UPDATE_TASK_STATUS);
 
-    const [updateTaskStatus] = useMutation(
-        UPDATE_TASK_STATUS
-    );
-
-    const tasks =
-        tasksQuery.data?.projectTasks ?? [];
-
-    const statuses =
-        statusesQuery.data?.projectStatuses ?? [];
-
-    const memberships =
-        membershipsQuery.data?.projectMemberships ?? [];
+    const tasks = tasksQuery.data?.projectTasks ?? [];
+    const statuses = statusesQuery.data?.projectStatuses ?? [];
+    const memberships = membershipsQuery.data?.projectMemberships ?? [];
+    const roles = rolesQuery.data?.projectRoles ?? [];
 
     const statusMap = useMemo(() => {
-        return new Map(
-            statuses.map((status) => [
-                status.id,
-                status,
-            ])
-        );
+        return new Map(statuses.map((status) => [status.id, status]));
     }, [statuses]);
 
     const memberMap = useMemo(() => {
-        return new Map(
-            memberships.map((membership) => [
-                membership.userId,
-                membership.user,
-            ])
-        );
+        return new Map(memberships.map((membership) => [membership.userId, membership.user]));
     }, [memberships]);
 
-    const handleCreateTask = async (
-        event: FormEvent<HTMLFormElement>
-    ) => {
+    useEffect(() => {
+        if (selectedRoleId && estimatedHours) {
+            const role = roles.find((r) => r.id === selectedRoleId);
+            const hours = Number(estimatedHours);
+            if (role && !isNaN(hours) && hours > 0) {
+                const rate = Number(role.hourlyRate);
+                if (!isNaN(rate)) {
+                    setEstimatedBudget(Number((rate * hours).toFixed(2)));
+                }
+            }
+        } else {
+            setEstimatedBudget("");
+        }
+    }, [selectedRoleId, estimatedHours, roles]);
+
+    const handleCreateTask = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setFormError("");
 
-        const selectedStatusId =
-            statusId || statuses[0]?.id || "";
+        const selectedStatusId = statusId || statuses[0]?.id || "";
 
         if (!title.trim()) {
             setFormError("Вкажи назву таски.");
@@ -305,24 +291,20 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                         priority,
                         startDate: null,
                         dueDate: toGraphQLDate(dueDate),
-                        estimatedBudget: null,
-                        estimatedUnit: null,
+                        estimatedBudget: estimatedBudget !== "" ? Number(estimatedBudget) : null,
+                        estimatedUnit: estimatedBudget !== "" ? "USD" : null,
                     },
                 },
             });
 
-            const createdTaskId =
-                result.data?.createTask?.id;
+            const createdTaskId = result.data?.createTask?.id;
 
             if (createdTaskId && assigneeId) {
                 await assignUserToTask({
                     variables: {
                         taskId: createdTaskId,
                         userId: assigneeId,
-                        estimatedHours:
-                            Number(estimatedHours) > 0
-                                ? Number(estimatedHours)
-                                : 1,
+                        estimatedHours: Number(estimatedHours) > 0 ? Number(estimatedHours) : 1,
                     },
                 });
             }
@@ -331,83 +313,47 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
             setNotes("");
             setDueDate("");
             setAssigneeId("");
-            setEstimatedHours("1");
+            setEstimatedHours("");
+            setSelectedRoleId("");
+            setEstimatedBudget("");
             setStatusId("");
 
             await tasksQuery.refetch();
         } catch (error: any) {
-            setFormError(
-                getFriendlyErrorMessage(error) ??
-                "Не вдалося створити таску."
-            );
+            setFormError(getFriendlyErrorMessage(error) ?? "Не вдалося створити таску.");
         }
     };
 
-    const handleStatusChange = async (
-        taskId: string,
-        nextStatusId: string
-    ) => {
+    const handleStatusChange = async (taskId: string, nextStatusId: string) => {
         try {
             await updateTaskStatus({
-                variables: {
-                    taskId,
-                    statusId: nextStatusId,
-                },
+                variables: { taskId, statusId: nextStatusId },
             });
-
             await tasksQuery.refetch();
         } catch (error: any) {
-            alert(
-                getFriendlyErrorMessage(error) ??
-                "Не вдалося змінити статус таски."
-            );
+            alert(getFriendlyErrorMessage(error) ?? "Не вдалося змінити статус таски.");
         }
     };
 
-    if (
-        tasksQuery.loading ||
-        statusesQuery.loading ||
-        membershipsQuery.loading
-    ) {
+    if (tasksQuery.loading || statusesQuery.loading || membershipsQuery.loading || rolesQuery.loading) {
         return (
             <div className="rounded-xl border border-gray-100 bg-bg-card p-6 shadow-sm">
-                Завантаження тасків...
+                Завантаження даних...
             </div>
         );
     }
 
-    if (tasksQuery.error) {
+    if (tasksQuery.error || statusesQuery.error || membershipsQuery.error || rolesQuery.error) {
+        const err = tasksQuery.error || statusesQuery.error || membershipsQuery.error || rolesQuery.error;
         return (
             <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-red-700">
-                {getFriendlyErrorMessage(tasksQuery.error) ??
-                    "Не вдалося завантажити таски."}
-            </div>
-        );
-    }
-
-    if (statusesQuery.error) {
-        return (
-            <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-red-700">
-                {getFriendlyErrorMessage(statusesQuery.error) ??
-                    "Не вдалося завантажити статуси."}
-            </div>
-        );
-    }
-
-    if (membershipsQuery.error) {
-        return (
-            <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-red-700">
-                {getFriendlyErrorMessage(
-                    membershipsQuery.error
-                ) ??
-                    "Не вдалося завантажити учасників проєкту."}
+                {getFriendlyErrorMessage(err as any) ?? "Не вдалося завантажити дані."}
             </div>
         );
     }
 
     return (
         <section className="space-y-6">
-            {/* ДОДАНО: Форма створення таски прихована, якщо проєкт в архіві */}
             {!isArchived && (
                 <div className="rounded-xl border border-gray-100 bg-bg-card p-6 shadow-sm">
                     <h2 className="mb-5 text-xl font-bold text-text-main">
@@ -420,20 +366,14 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                         </div>
                     )}
 
-                    <form
-                        onSubmit={handleCreateTask}
-                        className="grid gap-4 md:grid-cols-2"
-                    >
+                    <form onSubmit={handleCreateTask} className="grid gap-4 md:grid-cols-2">
                         <div className="md:col-span-2">
                             <label className="mb-1 block text-sm font-medium text-text-main">
                                 Назва
                             </label>
-
                             <input
                                 value={title}
-                                onChange={(event) =>
-                                    setTitle(event.target.value)
-                                }
+                                onChange={(e) => setTitle(e.target.value)}
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                 placeholder="Наприклад: Додати авторизацію"
                             />
@@ -443,12 +383,9 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                             <label className="mb-1 block text-sm font-medium text-text-main">
                                 Опис
                             </label>
-
                             <textarea
                                 value={notes}
-                                onChange={(event) =>
-                                    setNotes(event.target.value)
-                                }
+                                onChange={(e) => setNotes(e.target.value)}
                                 rows={3}
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                 placeholder="Опис таски"
@@ -459,23 +396,13 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                             <label className="mb-1 block text-sm font-medium text-text-main">
                                 Статус
                             </label>
-
                             <select
-                                value={
-                                    statusId ||
-                                    statuses[0]?.id ||
-                                    ""
-                                }
-                                onChange={(event) =>
-                                    setStatusId(event.target.value)
-                                }
+                                value={statusId || statuses[0]?.id || ""}
+                                onChange={(e) => setStatusId(e.target.value)}
                                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
                             >
                                 {statuses.map((status) => (
-                                    <option
-                                        key={status.id}
-                                        value={status.id}
-                                    >
+                                    <option key={status.id} value={status.id}>
                                         {status.name}
                                     </option>
                                 ))}
@@ -486,26 +413,15 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                             <label className="mb-1 block text-sm font-medium text-text-main">
                                 Пріоритет
                             </label>
-
                             <select
                                 value={priority}
-                                onChange={(event) =>
-                                    setPriority(event.target.value)
-                                }
+                                onChange={(e) => setPriority(e.target.value)}
                                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
                             >
-                                <option value="low">
-                                    Низький
-                                </option>
-                                <option value="medium">
-                                    Середній
-                                </option>
-                                <option value="high">
-                                    Високий
-                                </option>
-                                <option value="critical">
-                                    Критичний
-                                </option>
+                                <option value="low">Низький</option>
+                                <option value="medium">Середній</option>
+                                <option value="high">Високий</option>
+                                <option value="critical">Критичний</option>
                             </select>
                         </div>
 
@@ -513,13 +429,10 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                             <label className="mb-1 block text-sm font-medium text-text-main">
                                 Дедлайн
                             </label>
-
                             <input
                                 type="date"
                                 value={dueDate}
-                                onChange={(event) =>
-                                    setDueDate(event.target.value)
-                                }
+                                onChange={(e) => setDueDate(e.target.value)}
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2"
                             />
                         </div>
@@ -528,50 +441,67 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                             <label className="mb-1 block text-sm font-medium text-text-main">
                                 Виконавець
                             </label>
-
                             <select
                                 value={assigneeId}
-                                onChange={(event) =>
-                                    setAssigneeId(event.target.value)
-                                }
+                                onChange={(e) => setAssigneeId(e.target.value)}
                                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
                             >
-                                <option value="">
-                                    Не призначати
-                                </option>
-
-                                {memberships.map((membership) => (
-                                    <option
-                                        key={membership.userId}
-                                        value={membership.userId}
-                                    >
-                                        {membership.user.name} —{" "}
-                                        {membership.user.email}
+                                <option value="">Не призначати</option>
+                                {memberships.map((m) => (
+                                    <option key={m.userId} value={m.userId}>
+                                        {m.user.name} — {m.user.email}
                                     </option>
                                 ))}
                             </select>
                         </div>
 
-                        {assigneeId && (
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-text-main">
-                                    Орієнтовні години
-                                </label>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-text-main">
+                                Орієнтовні години
+                            </label>
+                            <input
+                                type="number"
+                                min="0.1"
+                                step="0.1"
+                                value={estimatedHours}
+                                onChange={(e) => setEstimatedHours(e.target.value)}
+                                placeholder="Наприклад: 10"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                            />
+                        </div>
 
-                                <input
-                                    type="number"
-                                    min="0.1"
-                                    step="0.1"
-                                    value={estimatedHours}
-                                    onChange={(event) =>
-                                        setEstimatedHours(
-                                            event.target.value
-                                        )
-                                    }
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2"
-                                />
-                            </div>
-                        )}
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-text-main">
+                                Роль (для бюджету)
+                            </label>
+                            <select
+                                value={selectedRoleId}
+                                onChange={(e) => setSelectedRoleId(e.target.value)}
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
+                            >
+                                <option value="">Оберіть роль</option>
+                                {roles.map((role) => (
+                                    <option key={role.id} value={role.id}>
+                                        {role.name} (${role.hourlyRate}/год)
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="md:col-span-2">
+                            <label className="mb-1 block text-sm font-medium text-text-main">
+                                Орієнтовний бюджет ($)
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={estimatedBudget}
+                                onChange={(e) => setEstimatedBudget(e.target.value === "" ? "" : Number(e.target.value))}
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-blue-50/50"
+                                placeholder="Бюджет буде розраховано автоматично..."
+                            />
+                        </div>
 
                         <div className="md:col-span-2">
                             <button
@@ -579,9 +509,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                 disabled={creating}
                                 className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                {creating
-                                    ? "Створення..."
-                                    : "Створити таску"}
+                                {creating ? "Створення..." : "Створити таску"}
                             </button>
                         </div>
                     </form>
@@ -596,19 +524,12 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                 </div>
 
                 {tasks.length === 0 ? (
-                    <div className="p-6 text-text-muted">
-                        Тасків ще немає.
-                    </div>
+                    <div className="p-6 text-text-muted">Тасків ще немає.</div>
                 ) : (
                     <div className="divide-y divide-gray-100">
                         {tasks.map((task) => {
-                            const status = statusMap.get(
-                                task.statusId
-                            );
-
-                            const assignee = task.assigneeId
-                                ? memberMap.get(task.assigneeId)
-                                : null;
+                            const status = statusMap.get(task.statusId);
+                            const assignee = task.assigneeId ? memberMap.get(task.assigneeId) : null;
 
                             return (
                                 <article
@@ -620,66 +541,39 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                             <h3 className="text-lg font-semibold text-text-main">
                                                 {task.title}
                                             </h3>
-
                                             <p className="mt-1 text-sm text-text-muted">
-                                                {task.notes?.trim()
-                                                    ? task.notes
-                                                    : "Опис відсутній."}
+                                                {task.notes?.trim() ? task.notes : "Опис відсутній."}
                                             </p>
                                         </div>
 
                                         <select
                                             value={task.statusId}
-                                            onChange={(event) =>
-                                                handleStatusChange(
-                                                    task.id,
-                                                    event.target.value
-                                                )
-                                            }
+                                            onChange={(e) => handleStatusChange(task.id, e.target.value)}
                                             disabled={isArchived}
                                             className={`rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm ${isArchived ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
-                                            style={{
-                                                borderColor:
-                                                    status?.color ??
-                                                    undefined,
-                                            }}
+                                            style={{ borderColor: status?.color ?? undefined }}
                                         >
-                                            {statuses.map(
-                                                (item) => (
-                                                    <option
-                                                        key={item.id}
-                                                        value={item.id}
-                                                    >
-                                                        {item.name}
-                                                    </option>
-                                                )
-                                            )}
+                                            {statuses.map((item) => (
+                                                <option key={item.id} value={item.id}>
+                                                    {item.name}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
 
-                                    <div className="grid gap-3 text-sm text-text-muted md:grid-cols-3">
+                                    <div className="grid gap-3 text-sm text-text-muted md:grid-cols-4">
                                         <div>
-                                            <span className="font-medium text-text-main">
-                                                Статус:
-                                            </span>{" "}
-                                            {status?.name ?? "—"}
+                                            <span className="font-medium text-text-main">Статус:</span> {status?.name ?? "—"}
                                         </div>
-
                                         <div>
-                                            <span className="font-medium text-text-main">
-                                                Виконавець:
-                                            </span>{" "}
-                                            {assignee?.name ??
-                                                "Не призначено"}
+                                            <span className="font-medium text-text-main">Виконавець:</span> {assignee?.name ?? "Не призначено"}
                                         </div>
-
                                         <div>
-                                            <span className="font-medium text-text-main">
-                                                Дедлайн:
-                                            </span>{" "}
-                                            {formatDate(
-                                                task.dueDate
-                                            )}
+                                            <span className="font-medium text-text-main">Дедлайн:</span> {formatDate(task.dueDate)}
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-text-main">Бюджет:</span>{" "}
+                                            {task.estimatedBudget ? `$${Number(task.estimatedBudget).toFixed(2)}` : "—"}
                                         </div>
                                     </div>
 
