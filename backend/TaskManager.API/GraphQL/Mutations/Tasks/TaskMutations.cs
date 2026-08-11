@@ -216,5 +216,52 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             return userId;
         }
+
+        [Authorize]
+        public async Task<TaskItem> UpdateTaskDetailsAsync(
+            UpdateTaskInput input,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] ITaskRepository taskRepository,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var currentUserId = GetCurrentUserId( claimsPrincipal );
+
+            var existingTask = await taskRepository.GetTaskByIdAsync(input.TaskId);
+
+            if (existingTask == null)
+                throw new GraphQLException("Таску не знайдено");
+            
+
+            var currentUser = await userRepository.GetUserByIdAsync(currentUserId);
+            if (currentUser == null)
+                throw new GraphQLException("Користувача не знайдено");
+
+            var hasAccess = currentUser.IsAdmin || await projectRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
+
+            if (!hasAccess)
+                throw new GraphQLException("У вас немає доступу до редагування цієї таски");
+
+            if (string.IsNullOrWhiteSpace(input.Title) || input.Title.Trim().Length < 2)
+                throw new GraphQLException("Назва таски має містити щонайменше 2 символи.");
+
+
+            var allowedPriorities = new[] { "low", "medium", "high", "critical" };
+            if (!allowedPriorities.Contains(input.Priority.Trim().ToLowerInvariant()))
+                throw new GraphQLException("Невірний пріоритет таски.");
+
+
+            if (input.StartDate.HasValue && input.DueDate.HasValue && input.DueDate < input.StartDate)
+                throw new GraphQLException("Дата завершення не може бути раніше дати початку.");
+
+            var isUpdated = await taskRepository.UpdateTaskAsync(input);
+
+            if (!isUpdated)
+                throw new GraphQLException("Не вдалося оновити таску.");
+
+            return await taskRepository.GetTaskByIdAsync(input.TaskId)
+                   ?? throw new GraphQLException("Таску оновлено, але не вдалося отримати дані.");
+
+        }
     }
 }

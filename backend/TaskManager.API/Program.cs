@@ -10,6 +10,7 @@ using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Services;
 using TaskManager.API.Repositories.TasksRepository;
+using TaskManager.API.GraphQL.Mutations.Tasks;
 
 namespace TaskManager.API
 {
