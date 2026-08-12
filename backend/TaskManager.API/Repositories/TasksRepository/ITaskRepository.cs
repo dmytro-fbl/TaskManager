@@ -1,4 +1,5 @@
-﻿using TaskManager.API.Models.TasksTables;
+﻿using TaskManager.API.DTOs.Tasks;
+using TaskManager.API.Models.TasksTables;
 
 namespace TaskManager.API.Repositories.TasksRepository
 {
@@ -19,5 +20,7 @@ namespace TaskManager.API.Repositories.TasksRepository
         Task<bool> UpdateTaskStatusAsync( Guid taskId, Guid statusId);
 
         Task<bool> HasUserTasksInProjectAsync(Guid projectId, Guid userId);
+
+        Task<bool> UpdateTaskAsync(UpdateTaskInput input);
     } 
 }

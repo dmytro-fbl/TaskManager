@@ -1,4 +1,5 @@
 ﻿using Npgsql;
+using TaskManager.API.DTOs.Tasks;
 using TaskManager.API.Models.TasksTables;
 
 namespace TaskManager.API.Repositories.TasksRepository
@@ -369,6 +370,37 @@ namespace TaskManager.API.Repositories.TasksRepository
             command.Parameters.AddWithValue("user_id", userId);
             var result = await command.ExecuteScalarAsync();
             return result is bool hasTasks && hasTasks;
+        }
+
+        public async Task<bool> UpdateTaskAsync(UpdateTaskInput input)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                UPDATE app.tasks
+                SET title = @title,
+                    notes = @notes,
+                    priority = @priority,
+                    start_date = @start_date,
+                    due_date = @due_date,
+                    estimated_budget = @estimated_budget,
+                    estimated_unit = @estimated_unit,
+                    updated_at = @updated_at
+                WHERE id = @task_id;
+            ";
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            AddParameter(command, "task_id", input.TaskId);
+            AddParameter(command, "title", input.Title.Trim());
+            AddParameter(command, "notes", string.IsNullOrWhiteSpace(input.Notes) ? null : input.Notes.Trim());
+            AddParameter(command, "priority", input.Priority.Trim().ToLowerInvariant());
+            AddParameter(command, "start_date", input.StartDate);
+            AddParameter(command, "due_date", input.DueDate);
+            AddParameter(command, "estimated_budget", input.EstimatedBudget);
+            AddParameter(command, "estimated_unit", input.EstimatedUnit);
+            AddParameter(command, "updated_at", DateTimeOffset.UtcNow);
+
+            return await command.ExecuteNonQueryAsync() > 0;
         }
     }
 }

@@ -4,7 +4,7 @@ using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Repositories.TasksRepository;
 
-namespace TaskManager.API.GraphQL.Mutations.Projects
+namespace TaskManager.API.GraphQL.Mutations.Tasks
 {
     [ExtendObjectType(OperationTypeNames.Mutation)]
     public class TaskAssignmentMutations
@@ -82,7 +82,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 );
             }
 
-            var assignment = new TaskManager.API.Models.TasksTables.TaskAssignment
+            var assignment = new Models.TasksTables.TaskAssignment
             {
                 TaskId = taskId,
                 UserId = userId,
