@@ -395,9 +395,10 @@ namespace TaskManager.API.Repositories.TasksRepository
             AddParameter(command, "notes", string.IsNullOrWhiteSpace(input.Notes) ? null : input.Notes.Trim());
             AddParameter(command, "priority", input.Priority.Trim().ToLowerInvariant());
             AddParameter(command, "start_date", input.StartDate);
+            AddParameter(command, "due_date", input.DueDate);
             AddParameter(command, "estimated_budget", input.EstimatedBudget);
             AddParameter(command, "estimated_unit", input.EstimatedUnit);
-            AddParameter(command, "update_at", DateTimeOffset.UtcNow);
+            AddParameter(command, "updated_at", DateTimeOffset.UtcNow);
 
             return await command.ExecuteNonQueryAsync() > 0;
         }
