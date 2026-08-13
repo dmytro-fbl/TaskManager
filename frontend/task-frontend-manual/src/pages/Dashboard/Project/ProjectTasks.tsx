@@ -2,7 +2,7 @@ import React, {
     FormEvent,
     useMemo,
     useState,
-    useEffect 
+    useEffect
 } from "react";
 import { gql } from "@apollo/client";
 import {
@@ -10,6 +10,7 @@ import {
     useQuery,
 } from "@apollo/client/react";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
+import { useNavigate } from "react-router-dom";
 
 const GET_PROJECT_TASKS = gql`
     query GetProjectTasks($projectId: UUID!) {
@@ -90,21 +91,6 @@ const CREATE_TASK = gql`
     }
 `;
 
-const UPDATE_TASK_DETAILS = gql`
-    mutation UpdateTaskDetails($input: UpdateTaskInput!) {
-        updateTaskDetails(input: $input) {
-            id
-            title
-            notes
-            priority
-            dueDate
-            estimatedBudget
-            estimatedUnit
-            updatedAt
-        }
-    }
-`;
-
 const ASSIGN_USER_TO_TASK = gql`
     mutation AssignUserToTask(
         $taskId: UUID!
@@ -134,8 +120,6 @@ const UPDATE_TASK_STATUS = gql`
         }
     }
 `;
-
-
 
 type Task = {
     id: string;
@@ -223,20 +207,13 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
     const [dueDate, setDueDate] = useState("");
     const [assigneeId, setAssigneeId] = useState("");
     const [estimatedHours, setEstimatedHours] = useState("");
-    
+
     const [selectedRoleId, setSelectedRoleId] = useState("");
     const [estimatedBudget, setEstimatedBudget] = useState<number | "">("");
-    
+
     const [formError, setFormError] = useState("");
 
-    const [editingTask, setEditingTask] = useState<Task | null>(null);
-    const [editForm, setEditForm] = useState({
-        title: "",
-        notes: "",
-        priority: "medium",
-        dueDate: "",
-        estimatedBudget: "" as number | "",
-    });
+    const navigate = useNavigate();
 
     const tasksQuery = useQuery<{ projectTasks: Task[] }>(GET_PROJECT_TASKS, {
         variables: { projectId },
@@ -259,7 +236,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
     });
 
     const [createTask, { loading: creating }] = useMutation<CreateTaskResponse, { input: CreateTaskInput }>(CREATE_TASK);
-    const [updateTaskDetails, { loading: updating }] = useMutation(UPDATE_TASK_DETAILS);
     const [assignUserToTask] = useMutation(ASSIGN_USER_TO_TASK);
     const [updateTaskStatus] = useMutation(UPDATE_TASK_STATUS);
 
@@ -348,43 +324,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
             await tasksQuery.refetch();
         } catch (error: any) {
             setFormError(getFriendlyErrorMessage(error) ?? "Не вдалося створити таску.");
-        }
-    };
-
-    const handleEditClick = (task: Task) => {
-        setEditingTask(task);
-        setEditForm({
-            title: task.title,
-            notes: task.notes || "",
-            priority: task.priority,
-            dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
-            estimatedBudget: task.estimatedBudget || "",
-        });
-    };
-
-    const handleUpdateTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editingTask) return;
-
-        try {
-            await updateTaskDetails({
-                variables: {
-                    input: {
-                        taskId: editingTask.id,
-                        title: editForm.title.trim(),
-                        notes: editForm.notes.trim() || null,
-                        priority: editForm.priority,
-                        startDate: null,
-                        dueDate: toGraphQLDate(editForm.dueDate),
-                        estimatedBudget: editForm.estimatedBudget !== "" ? Number(editForm.estimatedBudget) : null,
-                        estimatedUnit: editForm.estimatedBudget !== "" ? "USD" : null,
-                    }
-                }
-            });
-            setEditingTask(null);
-            await tasksQuery.refetch();
-        } catch (error: any) {
-            alert(getFriendlyErrorMessage(error) ?? "Не вдалося оновити таску.");
         }
     };
 
@@ -598,7 +537,8 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                             return (
                                 <article
                                     key={task.id}
-                                    className="space-y-3 p-6 hover:bg-gray-50/50 transition-colors"
+                                    onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
+                                    className="space-y-3 p-6 hover:bg-gray-50/50 transition-colors relative group cursor-pointer"
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-4">
                                         <div>
@@ -613,6 +553,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                         <select
                                             value={task.statusId}
                                             onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()} 
                                             disabled={isArchived}
                                             className={`rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm ${isArchived ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                                             style={{ borderColor: status?.color ?? undefined }}
@@ -623,15 +564,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                                 </option>
                                             ))}
                                         </select>
-
-                                        {!isArchived && (
-                                                <button 
-                                                    onClick={() => handleEditClick(task)}
-                                                    className="text-xs font-medium text-blue-600 hover:text-blue-800 transition"
-                                                >
-                                                    Редагувати
-                                                </button>
-                                            )}
                                     </div>
 
                                     <div className="grid gap-3 text-sm text-text-muted md:grid-cols-4">
@@ -659,56 +591,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                     </div>
                 )}
             </div>
-
-            {editingTask && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
-                        <h2 className="mb-4 text-xl font-bold text-text-main">Редагувати таску</h2>
-                        
-                        <form onSubmit={handleUpdateTask} className="grid gap-4">
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-text-main">Назва</label>
-                                <input required value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-text-main">Опис</label>
-                                <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-text-main">Пріоритет</label>
-                                    <select value={editForm.priority} onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2">
-                                        <option value="low">Низький</option>
-                                        <option value="medium">Середній</option>
-                                        <option value="high">Високий</option>
-                                        <option value="critical">Критичний</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-text-main">Дедлайн</label>
-                                    <input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2" />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-text-main">Фіксований Бюджет ($)</label>
-                                <input type="number" min="0" step="0.01" value={editForm.estimatedBudget} onChange={(e) => setEditForm({ ...editForm, estimatedBudget: e.target.value === "" ? "" : Number(e.target.value) })} className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="Наприклад: 500" />
-                            </div>
-
-                            <div className="mt-4 flex justify-end gap-3">
-                                <button type="button" onClick={() => setEditingTask(null)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
-                                    Скасувати
-                                </button>
-                                <button type="submit" disabled={updating} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition disabled:opacity-50">
-                                    {updating ? "Збереження..." : "Зберегти зміни"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </section>
     );
 };
