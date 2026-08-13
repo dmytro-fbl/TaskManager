@@ -272,7 +272,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IUserRepository userRepository,
             [Service] IProjectRepository projectRepository)
         {
-            if (input.TimeSpentHours <= 0)
+            if (input.HoursSpent <= 0)
                 throw new GraphQLException("Не коректний час.");
 
             var currentUserId = GetCurrentUserId(claimsPrincipal);

@@ -410,20 +410,18 @@ namespace TaskManager.API.Repositories.TasksRepository
             Guid workLogId = Guid.NewGuid();
 
             const string sql = @"
-                INSERT INTO app.worklogs (id, task_id, user_id, hours_spent, log_date, description, created_at, role_label_id)
-                VALUES (@task_id, @user_id, @hours_spent, @log_date, @description, @created_at, @role_label_id);
+                INSERT INTO app.worklogs (task_id, user_id, hours_spent, log_date, description, created_at)
+                VALUES (@task_id, @user_id, @hours_spent, @log_date, @description, @created_at);
             ";
 
             await using var command = new NpgsqlCommand(sql, connection);
 
-            AddParameter(command, "id", workLogId);
             AddParameter(command, "task_id", input.TaskId);
             AddParameter(command, "user_id", userId);
-            AddParameter(command, "hours_spent", input.TimeSpentHours);
+            AddParameter(command, "hours_spent", input.HoursSpent);
             AddParameter(command, "log_date", DateTimeOffset.UtcNow);
             AddParameter(command, "description", string.IsNullOrWhiteSpace(input.Comment) ? null : input.Comment.Trim());
             AddParameter(command, "created_at", DateTimeOffset.UtcNow);
-            AddParameter(command, "role_label_id", input.RoleLabelId);
 
             var result = await command.ExecuteNonQueryAsync();
 
@@ -438,20 +436,19 @@ namespace TaskManager.API.Repositories.TasksRepository
 
             const string sql = @"
             SELECT
-            w.id AS work_id,
-            w.task_id,
-            u.id AS user_id,
-            u.name AS user_name,
-            prl.id AS role_id,
-            prl.name AS role_name,
-            w.hours_spent,
-            w.log_date,
-            w.description
-            FROM app.worklogs w
-            JOIN app.users u ON w.user_id = u.id
-            JOIN app.project_role_labels prl ON w.role_label_id = prl.id
-            WHERE w.task_id = @task_id
-            ORDER BY w.log_date DESC;                 
+    w.id AS work_id,
+    w.task_id,
+    u.id AS user_id,
+    u.name AS user_name,
+    prl.name AS role_name,
+    w.hours_spent,
+    w.log_date,
+    w.description
+    FROM app.worklogs w
+    JOIN app.users u ON w.user_id = u.id
+    LEFT JOIN app.project_role_labels prl ON w.role_label_id = prl.id 
+    WHERE w.task_id = @task_id
+    ORDER BY w.log_date DESC;                
             ";
 
             await using var command = new NpgsqlCommand(sql, connection);
@@ -467,11 +464,12 @@ namespace TaskManager.API.Repositories.TasksRepository
                     Id = reader.GetGuid(reader.GetOrdinal("work_id")),
                     TaskId = reader.GetGuid(reader.GetOrdinal("task_id")),
                     UserId = reader.GetGuid(reader.GetOrdinal("user_id")),
-                    RoleLabelId = reader.GetGuid(reader.GetOrdinal("role_id")),
                     UserName = reader.GetString(reader.GetOrdinal("user_name")),
-                    RoleName = reader.GetString(reader.GetOrdinal("role_name")),
+                    RoleName = reader.IsDBNull(reader.GetOrdinal("role_name"))
+                    ? null
+                    : reader.GetString(reader.GetOrdinal("role_name")),
                     HoursSpent = reader.GetDecimal(reader.GetOrdinal("hours_spent")),
-                    LogDate = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("log_date")),
+                    LogDate = new DateTimeOffset(reader.GetFieldValue<DateTime>(reader.GetOrdinal("log_date")), TimeSpan.Zero),
                     Comment = reader.IsDBNull(reader.GetOrdinal("description"))
                     ? null :
                     reader.GetString(reader.GetOrdinal("description"))
