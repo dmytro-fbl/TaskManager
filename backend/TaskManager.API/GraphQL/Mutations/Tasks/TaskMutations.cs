@@ -263,5 +263,32 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                    ?? throw new GraphQLException("Таску оновлено, але не вдалося отримати дані.");
 
         }
+
+        [Authorize]
+        public async Task<bool> LogWork(
+            WorkLogInput input,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] ITaskRepository taskRepository,
+            [Service] IUserRepository userRepository,
+            [Service] IProjectRepository projectRepository)
+        {
+            if (input.TimeSpentHours <= 0)
+                throw new GraphQLException("Не коректний час.");
+
+            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var user = await userRepository.GetUserByIdAsync(currentUserId);
+            if (user == null)
+                throw new GraphQLException("Користувача не знайдено.");
+            
+            var existingTask = await taskRepository.GetTaskByIdAsync(input.TaskId);
+            if (existingTask == null)
+                throw new GraphQLException("Таску не знайдено.");
+            var hasAccess = user.IsAdmin || await projectRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
+            if (!hasAccess)
+                throw new GraphQLException("У вас не має доступу до цієї таски.");
+
+            return await taskRepository.AddWorkLogAsync(currentUserId, input);
+
+        }
     }
 }

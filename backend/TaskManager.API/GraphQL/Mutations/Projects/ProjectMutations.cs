@@ -106,9 +106,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 var currentUser = await userRepository.GetUserByIdAsync(userId);
                 if (currentUser == null)
                     throw new GraphQLException("Даний користувач не дійсний");
-                if (deadline == null)
-                    throw new GraphQLException("Дедлайн некоректний");
-
+                
                 var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
                 if (currentProject == null || currentProject.Status == "archived")
                     throw new GraphQLException("Даний проект архівований або його не існує");
