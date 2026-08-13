@@ -648,3 +648,5 @@ ALTER TABLE app.tasks DROP CONSTRAINT IF EXISTS chk_tasks_estimated_unit;
 
 ALTER TABLE app.tasks ADD CONSTRAINT chk_tasks_estimated_unit
 CHECK (estimated_unit IN ('USD', 'UAH', 'EUR', 'hours', 'h', 'sp', ''));
+
+ALTER TABLE app.worklogs ALTER COLUMN role_label_id DROP NOT NULL;
