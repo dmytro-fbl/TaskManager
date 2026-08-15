@@ -777,5 +777,46 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             return roles;
         }
+
+        public async Task<ProjectRoleDTO> CreateProjectRoleAsync(Guid projectId, string roleName)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string checkSql = "SELECT EXISTS(SELECT 1 FROM app.project_role_labels WHERE project_id = @project_id AND name = @name)";
+            await using var checkCmd = new NpgsqlCommand(checkSql, connection);
+
+            checkCmd.Parameters.AddWithValue("project_id", projectId);
+            checkCmd.Parameters.AddWithValue("name", roleName.Trim());
+
+            var exists = (bool)(await checkCmd.ExecuteScalarAsync() ?? false);
+            if (exists)
+            {
+                throw new InvalidOperationException("Роль з такою назвою вже існує в цьому проєкті.");
+            }
+
+            const string insertSql = @"
+                INSERT INTO app.project_role_labels (project_id, name)
+                VALUES (@project_id, @name)
+                RETURNING id, name;
+            ";
+
+            await using var insertCmd = new NpgsqlCommand(insertSql, connection);
+
+            insertCmd.Parameters.AddWithValue("project_id", projectId);
+            insertCmd.Parameters.AddWithValue("name", roleName.Trim());
+
+            await using var reader = await insertCmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new ProjectRoleDTO
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Name = reader.GetString(reader.GetOrdinal("name"))
+                };
+            }
+
+            throw new Exception("Не вдалося створити роль.");
+        }
     }
 }

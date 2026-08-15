@@ -632,14 +632,6 @@ ADD COLUMN deadline timestamptz;
 ALTER TABLE app.project_role_labels
 ADD COLUMN code VARCHAR(50) NOT NULL;
 
-CREATE INDEX IF NOT EXISTS idx_project_role_labels_project_id ON app.project_role_labels(project_id);
-CREATE INDEX IF NOT EXISTS idx_project_role_rates_label_id ON app.project_role_rates(role_label_id);
-
-ALTER TABLE app.tasks DROP CONSTRAINT IF EXISTS chk_tasks_estimated_unit;
-
-ALTER TABLE app.tasks ADD CONSTRAINT chk_tasks_estimated_unit
-CHECK (estimated_unit IN ('USD', 'UAH', 'EUR', 'hours', 'h', 'sp', ''));
-
 ALTER TABLE app.worklogs ALTER COLUMN role_label_id DROP NOT NULL;
 
 ALTER TABLE app.worklogs
