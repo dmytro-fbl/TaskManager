@@ -650,3 +650,9 @@ ALTER TABLE app.tasks ADD CONSTRAINT chk_tasks_estimated_unit
 CHECK (estimated_unit IN ('USD', 'UAH', 'EUR', 'hours', 'h', 'sp', ''));
 
 ALTER TABLE app.worklogs ALTER COLUMN role_label_id DROP NOT NULL;
+
+ALTER TABLE app.worklogs
+  ALTER COLUMN log_date TYPE timestamptz USING log_date::timestamptz;
+
+ALTER TABLE app.worklogs
+  ALTER COLUMN log_date SET DEFAULT now();
