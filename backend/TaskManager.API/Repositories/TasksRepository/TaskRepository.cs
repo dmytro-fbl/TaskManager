@@ -11,7 +11,6 @@ namespace TaskManager.API.Repositories.TasksRepository
         private const string TaskColumns = @"
             id, project_id, author_id, assignee_id, status_id,
             title, notes, priority, start_date, due_date,
-            estimated_budget, estimated_unit,
             created_at, updated_at, completed_at";
 
         public TaskRepository(NpgsqlDataSource dataSource)
@@ -30,13 +29,11 @@ namespace TaskManager.API.Repositories.TasksRepository
                 INSERT INTO app.tasks (
                     id, project_id, author_id, assignee_id, status_id,
                     title, notes, priority, start_date, due_date,
-                    estimated_budget, estimated_unit,
                     created_at, updated_at, completed_at
                 )
                 VALUES (
                     @id, @project_id, @author_id, @assignee_id, @status_id,
                     @title, @notes, @priority, @start_date, @due_date,
-                    @estimated_budget, @estimated_unit,
                     @created_at, @updated_at, @completed_at
                 )
                 RETURNING id;";
@@ -53,8 +50,6 @@ namespace TaskManager.API.Repositories.TasksRepository
             AddParameter(command, "priority", task.Priority);
             AddParameter(command, "start_date", task.StartDate);
             AddParameter(command, "due_date", task.DueDate);
-            AddParameter(command, "estimated_budget", task.EstimatedBudget);
-            AddParameter(command, "estimated_unit", task.EstimatedUnit);
             AddParameter(command, "created_at", now);
             AddParameter(command, "updated_at", now);
             AddParameter(command, "completed_at", task.CompletedAt);
@@ -297,8 +292,6 @@ namespace TaskManager.API.Repositories.TasksRepository
             var notesOrdinal = reader.GetOrdinal("notes");
             var startDateOrdinal = reader.GetOrdinal("start_date");
             var dueDateOrdinal = reader.GetOrdinal("due_date");
-            var estimatedBudgetOrdinal = reader.GetOrdinal("estimated_budget");
-            var estimatedUnitOrdinal = reader.GetOrdinal("estimated_unit");
             var completedAtOrdinal = reader.GetOrdinal("completed_at");
 
             return new TaskItem
@@ -327,14 +320,6 @@ namespace TaskManager.API.Repositories.TasksRepository
                 DueDate = reader.IsDBNull(dueDateOrdinal)
                     ? null
                     : reader.GetDateTime(dueDateOrdinal),
-
-                EstimatedBudget = reader.IsDBNull(estimatedBudgetOrdinal)
-                    ? null
-                    : reader.GetDecimal(estimatedBudgetOrdinal),
-
-                EstimatedUnit = reader.IsDBNull(estimatedUnitOrdinal)
-                    ? null
-                    : reader.GetString(estimatedUnitOrdinal),
 
                 CreatedAt = reader.GetFieldValue<DateTimeOffset>(
                     reader.GetOrdinal("created_at")
@@ -383,8 +368,6 @@ namespace TaskManager.API.Repositories.TasksRepository
                     priority = @priority,
                     start_date = @start_date,
                     due_date = @due_date,
-                    estimated_budget = @estimated_budget,
-                    estimated_unit = @estimated_unit,
                     updated_at = @updated_at
                 WHERE id = @task_id;
             ";
@@ -396,8 +379,6 @@ namespace TaskManager.API.Repositories.TasksRepository
             AddParameter(command, "priority", input.Priority.Trim().ToLowerInvariant());
             AddParameter(command, "start_date", input.StartDate);
             AddParameter(command, "due_date", input.DueDate);
-            AddParameter(command, "estimated_budget", input.EstimatedBudget);
-            AddParameter(command, "estimated_unit", input.EstimatedUnit);
             AddParameter(command, "updated_at", DateTimeOffset.UtcNow);
 
             return await command.ExecuteNonQueryAsync() > 0;
@@ -465,11 +446,13 @@ namespace TaskManager.API.Repositories.TasksRepository
                     TaskId = reader.GetGuid(reader.GetOrdinal("task_id")),
                     UserId = reader.GetGuid(reader.GetOrdinal("user_id")),
                     UserName = reader.GetString(reader.GetOrdinal("user_name")),
+                    
                     RoleName = reader.IsDBNull(reader.GetOrdinal("role_name"))
                     ? null
                     : reader.GetString(reader.GetOrdinal("role_name")),
+
                     HoursSpent = reader.GetDecimal(reader.GetOrdinal("hours_spent")),
-                    LogDate = new DateTimeOffset(reader.GetFieldValue<DateTime>(reader.GetOrdinal("log_date")), TimeSpan.Zero),
+                    LogDate = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("log_date")),
                     Comment = reader.IsDBNull(reader.GetOrdinal("description"))
                     ? null :
                     reader.GetString(reader.GetOrdinal("description"))

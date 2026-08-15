@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
-import { 
-    FiArrowLeft, 
-    FiClock, 
-    FiAlignLeft, 
-    FiCalendar, 
-    FiUser, 
-    FiDollarSign, 
-    FiActivity, 
-    FiFlag, 
+import {
+    FiArrowLeft,
+    FiClock,
+    FiAlignLeft,
+    FiCalendar,
+    FiUser,
+    FiDollarSign,
+    FiActivity,
+    FiFlag,
     FiSave,
     FiList
 } from "react-icons/fi";
@@ -26,7 +26,6 @@ type Task = {
     notes?: string | null;
     priority: string;
     dueDate?: string | null;
-    estimatedBudget?: number | null;
 };
 
 type ProjectStatus = {
@@ -62,10 +61,34 @@ type WorklogsResponse = {
 const GET_PROJECT_DETAILS_FOR_TASK = gql`
     query GetProjectDetailsForTask($projectId: UUID!) {
         projectTasks(projectId: $projectId) {
-            id projectId authorId assigneeId statusId title notes priority startDate dueDate estimatedBudget estimatedUnit createdAt updatedAt
+            id
+            projectId 
+            authorId 
+            assigneeId 
+            statusId 
+            title 
+            notes 
+            priority 
+            startDate 
+            dueDate  
+            createdAt 
+            updatedAt
         }
-        projectStatuses(projectId: $projectId) { id name category color }
-        projectMemberships(projectId: $projectId) { userId user { id name email } }
+        projectStatuses(projectId: $projectId) 
+        { 
+         id 
+         name 
+         category 
+         color 
+        }
+        projectMemberships(projectId: $projectId) { 
+        userId
+         user {
+          id 
+          name 
+          email
+            } 
+        }
     }
 `;
 
@@ -119,7 +142,7 @@ export const TaskDetailsPage: React.FC = () => {
 
     const status = projectQuery.data?.projectStatuses?.find((s) => s.id === task.statusId);
     const assignee = projectQuery.data?.projectMemberships?.find((m) => m.userId === task.assigneeId)?.user;
-    
+
     const worklogs = worklogsQuery.data?.taskWorklogs ?? [];
     const totalHoursLogged = worklogs.reduce((sum, item) => sum + Number(item.hoursSpent || 0), 0);
 
@@ -138,7 +161,7 @@ export const TaskDetailsPage: React.FC = () => {
                 variables: {
                     input: {
                         taskId: task.id,
-                        hoursSpent: hours, 
+                        hoursSpent: hours,
                         comment: comment.trim() || null,
                     },
                 },
@@ -166,7 +189,7 @@ export const TaskDetailsPage: React.FC = () => {
 
     return (
         <div className="mx-auto max-w-5xl space-y-6 pb-12">
-            <button 
+            <button
                 onClick={() => navigate(`/projects/${projectId}`)}
                 className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-blue-600 transition"
             >
@@ -206,7 +229,7 @@ export const TaskDetailsPage: React.FC = () => {
                         <form onSubmit={handleLogWork} className="mb-8 rounded-xl border border-blue-100 bg-blue-50/30 p-5 space-y-4">
                             <h4 className="text-xs font-bold text-blue-900 uppercase">Записати витрачений час</h4>
                             {formError && <div className="text-xs text-red-600 bg-red-50 p-2 rounded-md">{formError}</div>}
-                            
+
                             <div className="flex gap-4 items-start">
                                 <div className="w-1/3">
                                     <label className="block text-xs font-medium text-gray-700 mb-1">Години</label>
@@ -269,14 +292,6 @@ export const TaskDetailsPage: React.FC = () => {
                             <FiCalendar size={12} /> Дедлайн
                         </span>
                         <span className="text-sm font-semibold text-text-main pl-5">{formatDate(task.dueDate)}</span>
-                    </div>
-                    <div>
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
-                            <FiDollarSign size={12} /> Бюджет
-                        </span>
-                        <span className="text-sm font-bold text-green-600 pl-5">
-                            {task.estimatedBudget ? `$${Number(task.estimatedBudget).toFixed(2)}` : "—"}
-                        </span>
                     </div>
                 </div>
             </div>

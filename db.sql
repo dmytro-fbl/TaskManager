@@ -656,3 +656,7 @@ ALTER TABLE app.worklogs
 
 ALTER TABLE app.worklogs
   ALTER COLUMN log_date SET DEFAULT now();
+
+ALTER TABLE app.tasks
+DROP COLUMN estimated_unit,
+DROP COLUMN estimated_budget;

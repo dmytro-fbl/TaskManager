@@ -93,13 +93,6 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 );
             }
 
-            if (input.EstimatedBudget is < 0)
-            {
-                throw new GraphQLException(
-                    "Орієнтовний бюджет не може бути від'ємним."
-                );
-            }
-
             var task = new TaskItem
             {
                 ProjectId = input.ProjectId,
@@ -110,8 +103,6 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 Priority = priority,
                 StartDate = input.StartDate,
                 DueDate = input.DueDate,
-                EstimatedBudget = input.EstimatedBudget,
-                EstimatedUnit = input.EstimatedUnit?.Trim(),
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             };

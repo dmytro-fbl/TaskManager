@@ -25,8 +25,6 @@ const GET_PROJECT_TASKS = gql`
             priority
             startDate
             dueDate
-            estimatedBudget
-            estimatedUnit
             createdAt
             updatedAt
         }
@@ -83,8 +81,6 @@ const CREATE_TASK = gql`
             priority
             startDate
             dueDate
-            estimatedBudget
-            estimatedUnit
             createdAt
             updatedAt
         }
@@ -132,8 +128,6 @@ type Task = {
     priority: string;
     startDate?: string | null;
     dueDate?: string | null;
-    estimatedBudget?: number | null;
-    estimatedUnit?: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -172,8 +166,6 @@ type CreateTaskInput = {
     priority: string;
     startDate: string | null;
     dueDate: string | null;
-    estimatedBudget: number | null;
-    estimatedUnit: string | null;
 };
 
 type CreateTaskResponse = {
@@ -209,7 +201,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
     const [estimatedHours, setEstimatedHours] = useState("");
 
     const [selectedRoleId, setSelectedRoleId] = useState("");
-    const [estimatedBudget, setEstimatedBudget] = useState<number | "">("");
 
     const [formError, setFormError] = useState("");
 
@@ -252,20 +243,20 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
         return new Map(memberships.map((membership) => [membership.userId, membership.user]));
     }, [memberships]);
 
-    useEffect(() => {
-        if (selectedRoleId && estimatedHours) {
-            const role = roles.find((r) => r.id === selectedRoleId);
-            const hours = Number(estimatedHours);
-            if (role && !isNaN(hours) && hours > 0) {
-                const rate = Number(role.hourlyRate);
-                if (!isNaN(rate)) {
-                    setEstimatedBudget(Number((rate * hours).toFixed(2)));
-                }
-            }
-        } else {
-            setEstimatedBudget("");
-        }
-    }, [selectedRoleId, estimatedHours, roles]);
+    // useEffect(() => {
+    //     if (selectedRoleId && estimatedHours) {
+    //         const role = roles.find((r) => r.id === selectedRoleId);
+    //         const hours = Number(estimatedHours);
+    //         if (role && !isNaN(hours) && hours > 0) {
+    //             const rate = Number(role.hourlyRate);
+    //             if (!isNaN(rate)) {
+    //                 setEstimatedBudget(Number((rate * hours).toFixed(2)));
+    //             }
+    //         }
+    //     } else {
+    //         setEstimatedBudget("");
+    //     }
+    // }, [selectedRoleId, estimatedHours, roles]);
 
     const handleCreateTask = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -294,8 +285,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                         priority,
                         startDate: null,
                         dueDate: toGraphQLDate(dueDate),
-                        estimatedBudget: estimatedBudget !== "" ? Number(estimatedBudget) : null,
-                        estimatedUnit: estimatedBudget !== "" ? "USD" : null,
                     },
                 },
             });
@@ -318,7 +307,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
             setAssigneeId("");
             setEstimatedHours("");
             setSelectedRoleId("");
-            setEstimatedBudget("");
             setStatusId("");
 
             await tasksQuery.refetch();
@@ -475,7 +463,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
 
                         <div>
                             <label className="mb-1 block text-sm font-medium text-text-main">
-                                Роль (для бюджету)
+                                Роль 
                             </label>
                             <select
                                 value={selectedRoleId}
@@ -491,7 +479,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                             </select>
                         </div>
 
-                        <div className="md:col-span-2">
+                        {/* <div className="md:col-span-2">
                             <label className="mb-1 block text-sm font-medium text-text-main">
                                 Орієнтовний бюджет ($)
                             </label>
@@ -504,7 +492,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                 className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-blue-50/50"
                                 placeholder="Бюджет буде розраховано автоматично..."
                             />
-                        </div>
+                        </div> */}
 
                         <div className="md:col-span-2">
                             <button
@@ -575,10 +563,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                         </div>
                                         <div>
                                             <span className="font-medium text-text-main">Дедлайн:</span> {formatDate(task.dueDate)}
-                                        </div>
-                                        <div>
-                                            <span className="font-medium text-text-main">Бюджет:</span>{" "}
-                                            {task.estimatedBudget ? `$${Number(task.estimatedBudget).toFixed(2)}` : "—"}
                                         </div>
                                     </div>
 
