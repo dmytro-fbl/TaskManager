@@ -27,7 +27,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             try
             {
-                // Перевірка існування проекту
                 const string projectCheckSql = "SELECT id FROM app.projects WHERE id = @project_id;";
                 await using var projectCheckCmd = new NpgsqlCommand(projectCheckSql, connection);
                 projectCheckCmd.Parameters.AddWithValue("project_id", projectId);
@@ -38,7 +37,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     throw new GraphQLException("Проект не знайдено");
                 }
 
-                // Знайти існуючого користувача по email (зареєстрований, активний)
                 const string userSql = @"
                     SELECT id
                     FROM app.users
@@ -55,7 +53,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     throw new GraphQLException($"Користувач з email '{email}' не знайдено або він не активний/не зареєстрований.");
                 }
 
-                // Перевірити, що юзер ще не в проекті
                 const string memberCheckSql = @"
                     SELECT COUNT(1)
                     FROM app.project_memberships
@@ -71,7 +68,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     throw new GraphQLException("Користувач вже є членом цього проекту.");
                 }
 
-                // Згенерувати токен інвайту
                 var token = Guid.NewGuid().ToString("N");
 
                 const string insertInviteSql = @"
@@ -721,11 +717,11 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             var defaultRoles = new[]
             {
-                new { Name = "Backend Developer", Code = "backend", Rate = 40.00m },
-                new { Name = "Frontend Developer", Code = "frontend", Rate = 35.00m },
-                new { Name = "UI/UX Designer", Code = "design", Rate = 30.00m },
-                new { Name = "QA Engineer", Code = "qa", Rate = 25.00m },
-                new { Name = "Project Manager", Code = "pm", Rate = 50.00m }
+                new { Name = "Backend Developer", Code = "backend" },
+                new { Name = "Frontend Developer", Code = "frontend" },
+                new { Name = "UI/UX Designer", Code = "design" },
+                new { Name = "QA Engineer", Code = "qa" },
+                new { Name = "Project Manager", Code = "pm" }
             };
 
             foreach (var role in defaultRoles)
@@ -744,19 +740,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 labelCmd.Parameters.AddWithValue("code", role.Code);
 
                 await labelCmd.ExecuteNonQueryAsync();
-
-                const string insertRateSql = @"
-                    INSERT INTO app.project_role_rates (role_label_id, hourly_rate, effective_from)
-                    VALUES (@role_label_id, @hourly_rate, @effective_from);
-                ";
-
-                await using var rateCmd = new NpgsqlCommand(insertRateSql, connection);
-
-                rateCmd.Parameters.AddWithValue("role_label_id", roleId);
-                rateCmd.Parameters.AddWithValue("hourly_rate", role.Rate);
-                rateCmd.Parameters.AddWithValue("effective_from", DateTimeOffset.UtcNow);
-
-                await rateCmd.ExecuteNonQueryAsync();
 
             }
 

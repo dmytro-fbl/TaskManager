@@ -632,15 +632,6 @@ ADD COLUMN deadline timestamptz;
 ALTER TABLE app.project_role_labels
 ADD COLUMN code VARCHAR(50) NOT NULL;
 
-CREATE TABLE IF NOT EXISTS app.project_role_rates (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    role_label_id UUID NOT NULL,
-    hourly_rate NUMERIC(10, 2) NOT NULL,  
-    effective_from TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_role_rates_label FOREIGN KEY (role_label_id)
-        REFERENCES app.project_role_labels(id) ON DELETE CASCADE
-);
-
 CREATE INDEX IF NOT EXISTS idx_project_role_labels_project_id ON app.project_role_labels(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_role_rates_label_id ON app.project_role_rates(role_label_id);
 
@@ -660,3 +651,5 @@ ALTER TABLE app.worklogs
 ALTER TABLE app.tasks
 DROP COLUMN estimated_unit,
 DROP COLUMN estimated_budget;
+
+DROP TABLE IF EXISTS app.project_role_rates CASCADE;
