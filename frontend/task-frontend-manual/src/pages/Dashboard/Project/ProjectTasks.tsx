@@ -2,7 +2,6 @@ import React, {
     FormEvent,
     useMemo,
     useState,
-    useEffect
 } from "react";
 import { gql } from "@apollo/client";
 import {
@@ -11,6 +10,7 @@ import {
 } from "@apollo/client/react";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import { useNavigate } from "react-router-dom";
+import { FiTrash2 } from "react-icons/fi";
 
 const GET_PROJECT_TASKS = gql`
     query GetProjectTasks($projectId: UUID!) {
@@ -115,6 +115,12 @@ const UPDATE_TASK_STATUS = gql`
             updatedAt
         }
     }
+`;
+
+const DELETE_TASK_MUTATION = gql`
+  mutation DeleteTask($taskId: UUID!) {
+    deleteTask(taskId: $taskId)
+  }
 `;
 
 type Task = {
@@ -243,21 +249,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
         return new Map(memberships.map((membership) => [membership.userId, membership.user]));
     }, [memberships]);
 
-    // useEffect(() => {
-    //     if (selectedRoleId && estimatedHours) {
-    //         const role = roles.find((r) => r.id === selectedRoleId);
-    //         const hours = Number(estimatedHours);
-    //         if (role && !isNaN(hours) && hours > 0) {
-    //             const rate = Number(role.hourlyRate);
-    //             if (!isNaN(rate)) {
-    //                 setEstimatedBudget(Number((rate * hours).toFixed(2)));
-    //             }
-    //         }
-    //     } else {
-    //         setEstimatedBudget("");
-    //     }
-    // }, [selectedRoleId, estimatedHours, roles]);
-
     const handleCreateTask = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         setFormError("");
@@ -323,6 +314,27 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
             await tasksQuery.refetch();
         } catch (error: any) {
             alert(getFriendlyErrorMessage(error) ?? "Не вдалося змінити статус таски.");
+        }
+    };
+
+    const [deleteTaskMutation] = useMutation(DELETE_TASK_MUTATION);
+
+    const handleDeleteTask = async (taskId: string) => {
+        const isConfirmed = window.confirm("Ви впевнені, що хочете видалити цю таску? Дія незворотня.");
+        if (!isConfirmed) return;
+
+        try {
+            await deleteTaskMutation({
+                variables: { taskId },
+
+                update: (cache) => {
+                    cache.evict({ id: cache.identify({ __typename: 'TaskItem', id: taskId }) });
+                    cache.gc(); 
+                }
+            });
+        } catch (error: any) {
+
+            alert(error.message || "Сталася помилка при видаленні таски.");
         }
     };
 
@@ -463,7 +475,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
 
                         <div>
                             <label className="mb-1 block text-sm font-medium text-text-main">
-                                Роль 
+                                Роль
                             </label>
                             <select
                                 value={selectedRoleId}
@@ -478,21 +490,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                 ))}
                             </select>
                         </div>
-
-                        {/* <div className="md:col-span-2">
-                            <label className="mb-1 block text-sm font-medium text-text-main">
-                                Орієнтовний бюджет ($)
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={estimatedBudget}
-                                onChange={(e) => setEstimatedBudget(e.target.value === "" ? "" : Number(e.target.value))}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-blue-50/50"
-                                placeholder="Бюджет буде розраховано автоматично..."
-                            />
-                        </div> */}
 
                         <div className="md:col-span-2">
                             <button
@@ -529,6 +526,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                     className="space-y-3 p-6 hover:bg-gray-50/50 transition-colors relative group cursor-pointer"
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-4">
+                                        {/* Ліва частина: Заголовок і опис */}
                                         <div>
                                             <h3 className="text-lg font-semibold text-text-main">
                                                 {task.title}
@@ -538,20 +536,41 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                             </p>
                                         </div>
 
-                                        <select
-                                            value={task.statusId}
-                                            onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                                            onClick={(e) => e.stopPropagation()} 
-                                            disabled={isArchived}
-                                            className={`rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm ${isArchived ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
-                                            style={{ borderColor: status?.color ?? undefined }}
-                                        >
-                                            {statuses.map((item) => (
-                                                <option key={item.id} value={item.id}>
-                                                    {item.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        {/* Права частина: Статус та кнопка видалення */}
+                                        <div className="flex flex-col items-end gap-3">
+                                            <select
+                                                value={task.statusId}
+                                                onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                disabled={isArchived}
+                                                className={`min-w-[160px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm ${isArchived ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                                                style={{ borderColor: status?.color ?? undefined }}
+                                            >
+                                                {statuses.map((item) => (
+                                                    <option key={item.id} value={item.id}>
+                                                        {item.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+
+                                            {!isArchived && (
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation(); 
+                                                        try {
+                                                            await handleDeleteTask(task.id);
+                                                        } catch (error: any) {
+                                                            alert(error.message || "Не вдалося видалити таску.");
+                                                        }
+                                                    }}
+                                                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 hover:border-red-300"
+                                                    title="Видалити таску"
+                                                >
+                                                    <FiTrash2 className="h-4 w-4" />
+                                                    Видалити
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="grid gap-3 text-sm text-text-muted md:grid-cols-4">
