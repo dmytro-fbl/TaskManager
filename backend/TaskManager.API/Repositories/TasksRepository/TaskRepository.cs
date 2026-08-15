@@ -249,7 +249,7 @@ namespace TaskManager.API.Repositories.TasksRepository
                 value ?? DBNull.Value
             );
         }
-        public async Task<bool> UpdateTaskStatusAsync(Guid taskId,Guid statusId)
+        public async Task<bool> UpdateTaskStatusAsync(Guid taskId, Guid statusId)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
@@ -267,7 +267,7 @@ namespace TaskManager.API.Repositories.TasksRepository
 
             return await command.ExecuteNonQueryAsync() > 0;
         }
-        public async Task<bool> IsProjectStatusAsync( Guid projectId, Guid statusId)
+        public async Task<bool> IsProjectStatusAsync(Guid projectId, Guid statusId)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
@@ -446,7 +446,7 @@ namespace TaskManager.API.Repositories.TasksRepository
                     TaskId = reader.GetGuid(reader.GetOrdinal("task_id")),
                     UserId = reader.GetGuid(reader.GetOrdinal("user_id")),
                     UserName = reader.GetString(reader.GetOrdinal("user_name")),
-                    
+
                     RoleName = reader.IsDBNull(reader.GetOrdinal("role_name"))
                     ? null
                     : reader.GetString(reader.GetOrdinal("role_name")),
@@ -460,6 +460,44 @@ namespace TaskManager.API.Repositories.TasksRepository
             }
 
             return workLogs;
+        }
+
+        public async Task<bool> DeleteTaskAsync(Guid taskId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string deleteSql = @"
+                DELETE FROM app.tasks
+                WHERE id = @task_id;
+            ";
+
+            await using (var deletedCmd = new NpgsqlCommand(deleteSql, connection))
+            {
+                AddParameter(deletedCmd, "task_id", taskId);
+
+                var rowsAffected = await deletedCmd.ExecuteNonQueryAsync();
+
+                return rowsAffected > 0;
+            }
+
+        }
+
+        public async Task<bool> HasWorkLogsAsync(Guid taskId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT EXISTS (
+                    SELECT 1 
+                    FROM app.worklogs 
+                    WHERE task_id = @task_id
+                );
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            AddParameter(command, "task_id", taskId);
+
+            return (bool)(await command.ExecuteScalarAsync() ?? false);
         }
     }
 }

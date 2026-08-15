@@ -25,5 +25,7 @@ namespace TaskManager.API.Repositories.TasksRepository
 
         Task<bool> AddWorkLogAsync(Guid userId, WorkLogInput input);
         Task<IEnumerable<WorkLogDTO>> GetTaskWorkLogsAsync(Guid taskId);
+        Task<bool> DeleteTaskAsync(Guid taskId);
+        Task<bool> HasWorkLogsAsync(Guid taskId);
     }
 }

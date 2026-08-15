@@ -281,5 +281,57 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             return await taskRepository.AddWorkLogAsync(currentUserId, input);
 
         }
+
+        [Authorize]
+        public async Task<bool> DeleteTaskAsync(
+            Guid taskId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] ITaskRepository taskRepository,
+            [Service] IUserRepository userRepository,
+            [Service] IProjectRepository projectRepository)
+        {
+            var userId = GetCurrentUserId(claimsPrincipal);
+            var currentUser = await userRepository.GetUserByIdAsync(userId);
+            if (currentUser == null)
+                throw new GraphQLException("Користувача не знайдено.");
+
+            var task = await taskRepository.GetTaskByIdAsync(taskId);
+
+            if (task == null)
+            {
+                throw new GraphQLException("Таску не знайдено.");
+            }
+
+            var hasProjectAccess = currentUser.IsAdmin ||
+                await projectRepository.IsUserInProjectAsync(
+                    task.ProjectId,
+                    userId
+                );
+
+            if (!hasProjectAccess)
+            {
+                throw new GraphQLException(
+                    "У вас немає доступу до проєкту цієї таски."
+                );
+            }
+
+            var hasWorkLogs = await taskRepository.HasWorkLogsAsync(taskId);
+
+            if (hasWorkLogs)
+            {
+                throw new GraphQLException(
+                    "Неможливо видалити таску, оскільки за нею вже залоговано години."
+                );
+            }
+
+            var isDeleted = await taskRepository.DeleteTaskAsync(taskId);
+
+            if (!isDeleted)
+            {
+                throw new GraphQLException("Не вдалося видалити таску.");
+            }
+
+            return true;
+        }
     }
 }
