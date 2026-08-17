@@ -2,6 +2,7 @@
 {
     public class CreateTaskInput
     {
+        public Guid RoleId { get; set; }
         public Guid ProjectId { get; set; }
 
         public Guid StatusId { get; set; }

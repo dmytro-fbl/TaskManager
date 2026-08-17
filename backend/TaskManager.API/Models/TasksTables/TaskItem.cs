@@ -3,6 +3,7 @@
     public class TaskItem
     {
         public Guid Id { get; set; }
+        public Guid? RoleId { get; set; }
         public Guid ProjectId { get; set; }
 
         public Guid AuthorId { get; set; }

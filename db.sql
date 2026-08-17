@@ -644,3 +644,6 @@ DROP COLUMN estimated_budget;
 DROP TABLE IF EXISTS app.project_role_rates CASCADE;
 
 ALTER TABLE app.project_role_labels DROP COLUMN IF EXISTS code;
+
+ALTER TABLE app.tasks
+ADD COLUMN role_id UUID REFERENCES app.project_role_labels(id) ON DELETE SET NULL;

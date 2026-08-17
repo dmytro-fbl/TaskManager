@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel;
+using Npgsql;
 using TaskManager.API.DTOs.Tasks;
 using TaskManager.API.Models.TasksTables;
 
@@ -9,7 +10,7 @@ namespace TaskManager.API.Repositories.TasksRepository
         private readonly NpgsqlDataSource _dataSource;
 
         private const string TaskColumns = @"
-            id, project_id, author_id, assignee_id, status_id,
+            id, role_id, project_id, author_id, assignee_id, status_id,
             title, notes, priority, start_date, due_date,
             created_at, updated_at, completed_at";
 
@@ -27,12 +28,12 @@ namespace TaskManager.API.Repositories.TasksRepository
 
             const string sql = @"
                 INSERT INTO app.tasks (
-                    id, project_id, author_id, assignee_id, status_id,
+                    id, role_id, project_id, author_id, assignee_id, status_id,
                     title, notes, priority, start_date, due_date,
                     created_at, updated_at, completed_at
                 )
                 VALUES (
-                    @id, @project_id, @author_id, @assignee_id, @status_id,
+                    @id, @role_id, @project_id, @author_id, @assignee_id, @status_id,
                     @title, @notes, @priority, @start_date, @due_date,
                     @created_at, @updated_at, @completed_at
                 )
@@ -41,6 +42,7 @@ namespace TaskManager.API.Repositories.TasksRepository
             await using var command = new NpgsqlCommand(sql, connection);
 
             AddParameter(command, "id", taskId);
+            AddParameter(command, "role_id", task.RoleId);
             AddParameter(command, "project_id", task.ProjectId);
             AddParameter(command, "author_id", task.AuthorId);
             AddParameter(command, "assignee_id", task.AssigneeId);
@@ -288,6 +290,7 @@ namespace TaskManager.API.Repositories.TasksRepository
         }
         private static TaskItem MapTask(NpgsqlDataReader reader)
         {
+            var roleIdOrdinal = reader.GetOrdinal("role_id");
             var assigneeIdOrdinal = reader.GetOrdinal("assignee_id");
             var notesOrdinal = reader.GetOrdinal("notes");
             var startDateOrdinal = reader.GetOrdinal("start_date");
@@ -297,6 +300,9 @@ namespace TaskManager.API.Repositories.TasksRepository
             return new TaskItem
             {
                 Id = reader.GetGuid(reader.GetOrdinal("id")),
+                RoleId = reader.IsDBNull(roleIdOrdinal)
+            ? null
+            : reader.GetGuid(roleIdOrdinal),
                 ProjectId = reader.GetGuid(reader.GetOrdinal("project_id")),
                 AuthorId = reader.GetGuid(reader.GetOrdinal("author_id")),
 
