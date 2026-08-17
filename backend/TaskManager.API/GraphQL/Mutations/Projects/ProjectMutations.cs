@@ -196,7 +196,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             var membership = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
             var isManager = membership != null && membership == "manager";
-
+            
             if (!currentUser.IsAdmin && !isManager)
             {
                 throw new GraphQLException("Тільки менеджер проєкту може створювати нові ролі.");
@@ -206,9 +206,9 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             {
                 return await projectRepository.CreateProjectRoleAsync(projectId, name);
             }
-            catch
+            catch (InvalidOperationException ex)
             {
-                throw new GraphQLException("Плмилка авторизації.");
+                throw new GraphQLException("Помилка авторизації.", ex);
             }
         }
     }

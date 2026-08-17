@@ -717,11 +717,11 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             var defaultRoles = new[]
             {
-                new { Name = "Backend Developer", Code = "backend" },
-                new { Name = "Frontend Developer", Code = "frontend" },
-                new { Name = "UI/UX Designer", Code = "design" },
-                new { Name = "QA Engineer", Code = "qa" },
-                new { Name = "Project Manager", Code = "pm" }
+                new { Name = "Backend Developer" },
+                new { Name = "Frontend Developer" },
+                new { Name = "UI/UX Designer" },
+                new { Name = "QA Engineer" },
+                new { Name = "Project Manager" }
             };
 
             foreach (var role in defaultRoles)
@@ -729,15 +729,14 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 var roleId = Guid.NewGuid();
 
                 const string insertLabelSql = @"
-                    INSERT INTO  app.project_role_labels (id, project_id, name, code)
-                    VALUES (@id, @project_id, @name, @code);
+                    INSERT INTO  app.project_role_labels (id, project_id, name)
+                    VALUES (@id, @project_id, @name);
                 ";
                 await using var labelCmd = new NpgsqlCommand(insertLabelSql, connection);
 
                 labelCmd.Parameters.AddWithValue("id", roleId);
                 labelCmd.Parameters.AddWithValue("project_id", projectId);
                 labelCmd.Parameters.AddWithValue("name", role.Name);
-                labelCmd.Parameters.AddWithValue("code", role.Code);
 
                 await labelCmd.ExecuteNonQueryAsync();
 
@@ -752,11 +751,10 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             var roles = new List<ProjectRoleDTO>();
 
             const string sql = @"
-                SELECT l.id, l.name, r.hourly_rate
-                FROM app.project_role_labels l 
-                JOIN app.project_role_rates r ON l.id = r.role_label_id
-                WHERE l.project_id = @project_id
-                ORDER BY l.name;
+                SELECT id, project_id, name
+                FROM app.project_role_labels 
+                WHERE project_id = @project_id
+                ORDER BY name ASC;
             ";
 
             await using var command = new NpgsqlCommand(sql, connection);
@@ -769,8 +767,8 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 roles.Add(new ProjectRoleDTO
                 {
                     Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    ProjectId = reader.GetGuid(reader.GetOrdinal("project_id")),
                     Name = reader.GetString(reader.GetOrdinal("name")),
-                    HourlyRate = reader.GetDecimal(reader.GetOrdinal("hourly_rate"))
                 });
 
             }
@@ -791,7 +789,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             var exists = (bool)(await checkCmd.ExecuteScalarAsync() ?? false);
             if (exists)
             {
-                throw new InvalidOperationException("Роль з такою назвою вже існує в цьому проєкті.");
+                throw new GraphQLException("Роль з такою назвою вже існує в цьому проєкті.");
             }
 
             const string insertSql = @"

@@ -63,8 +63,8 @@ const GET_PROJECT_ROLES = gql`
     query GetProjectRoles($projectId: UUID!) {
         projectRoles(projectId: $projectId) {
             id
+            projectId
             name
-            hourlyRate
         }
     }
 `;
@@ -122,6 +122,27 @@ const DELETE_TASK_MUTATION = gql`
     deleteTask(taskId: $taskId)
   }
 `;
+
+const CREATE_PROJECT_ROLE = gql`
+    mutation CreateProjectRole($projectId: UUID!, $name: String!) {
+        createProjectRole(projectId: $projectId, name: $name) {
+            id
+            name
+        }
+    }
+`;
+
+type CreateProjectRoleResponse = {
+    createProjectRole: {
+        id: string;
+        name: string;
+    } | null;
+};
+
+type CreateProjectRoleVariables = {
+    projectId: string;
+    name: string;
+};
 
 type Task = {
     id: string;
@@ -241,6 +262,17 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
     const memberships = membershipsQuery.data?.projectMemberships ?? [];
     const roles = rolesQuery.data?.projectRoles ?? [];
 
+    const [isAddingRole, setIsAddingRole] = useState(false);
+    const [newRoleName, setNewRoleName] = useState("");
+    const [roleError, setRoleError] = useState("");
+
+    const [createRole, { loading: creatingRole }] = useMutation<
+        CreateProjectRoleResponse,
+        CreateProjectRoleVariables
+    >(CREATE_PROJECT_ROLE, {
+        refetchQueries: [{ query: GET_PROJECT_ROLES, variables: { projectId } }]
+    });
+
     const statusMap = useMemo(() => {
         return new Map(statuses.map((status) => [status.id, status]));
     }, [statuses]);
@@ -317,6 +349,29 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
         }
     };
 
+    const handleCreateCustomRole = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        setRoleError("");
+
+        if (!newRoleName.trim()) return;
+
+        try {
+            const { data } = await createRole({
+                variables: { projectId, name: newRoleName.trim() }
+            });
+
+            const newId = data?.createProjectRole?.id;
+            if (newId) {
+                setSelectedRoleId(newId);
+            }
+
+            setNewRoleName("");
+            setIsAddingRole(false);
+        } catch (err: any) {
+            setRoleError(err.message || "Не вдалося створити роль.");
+        }
+    };
+
     const [deleteTaskMutation] = useMutation(DELETE_TASK_MUTATION);
 
     const handleDeleteTask = async (taskId: string) => {
@@ -329,7 +384,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
 
                 update: (cache) => {
                     cache.evict({ id: cache.identify({ __typename: 'TaskItem', id: taskId }) });
-                    cache.gc(); 
+                    cache.gc();
                 }
             });
         } catch (error: any) {
@@ -474,21 +529,66 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                         </div>
 
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-text-main">
-                                Роль
-                            </label>
-                            <select
-                                value={selectedRoleId}
-                                onChange={(e) => setSelectedRoleId(e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
-                            >
-                                <option value="">Оберіть роль</option>
-                                {roles.map((role) => (
-                                    <option key={role.id} value={role.id}>
-                                        {role.name} (${role.hourlyRate}/год)
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="mb-1 flex items-center justify-between">
+                                <label className="block text-sm font-medium text-text-main">
+                                    Роль
+                                </label>
+                                {!isAddingRole && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddingRole(true)}
+                                        className="flex items-center gap-1 text-xs font-medium text-blue-600 transition hover:text-blue-700"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                        </svg>
+                                        Нова роль
+                                    </button>
+                                )}
+                            </div>
+
+                            {isAddingRole ? (
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={newRoleName}
+                                            onChange={(e) => setNewRoleName(e.target.value)}
+                                            placeholder="Назва ролі"
+                                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleCreateCustomRole}
+                                            disabled={creatingRole || !newRoleName.trim()}
+                                            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                                        >
+                                            {creatingRole ? "..." : "Зберегти"}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setIsAddingRole(false); setRoleError(""); setNewRoleName(""); }}
+                                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                        >
+                                            Скасувати
+                                        </button>
+                                    </div>
+                                    {roleError && <span className="text-xs text-red-600">{roleError}</span>}
+                                </div>
+                            ) : (
+                                <select
+                                    value={selectedRoleId}
+                                    onChange={(e) => setSelectedRoleId(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
+                                >
+                                    <option value="">Оберіть роль</option>
+                                    {roles.map((role) => (
+                                        <option key={role.id} value={role.id}>
+                                            {role.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
 
                         <div className="md:col-span-2">
@@ -556,7 +656,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                             {!isArchived && (
                                                 <button
                                                     onClick={async (e) => {
-                                                        e.stopPropagation(); 
+                                                        e.stopPropagation();
                                                         try {
                                                             await handleDeleteTask(task.id);
                                                         } catch (error: any) {
