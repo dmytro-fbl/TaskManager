@@ -629,9 +629,6 @@ ADD COLUMN refresh_token_expiry_time TIMESTAMPTZ;
 ALTER TABLE app.projects
 ADD COLUMN deadline timestamptz;
 
-ALTER TABLE app.project_role_labels
-ADD COLUMN code VARCHAR(50) NOT NULL;
-
 ALTER TABLE app.worklogs ALTER COLUMN role_label_id DROP NOT NULL;
 
 ALTER TABLE app.worklogs
@@ -645,3 +642,5 @@ DROP COLUMN estimated_unit,
 DROP COLUMN estimated_budget;
 
 DROP TABLE IF EXISTS app.project_role_rates CASCADE;
+
+ALTER TABLE app.project_role_labels DROP COLUMN IF EXISTS code;
