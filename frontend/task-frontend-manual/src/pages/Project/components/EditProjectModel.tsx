@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useMutation } from '@apollo/client/react';
-import { UPDATE_PROJECT } from '../../../graphql/mutations/projectMutation';
+import { UPDATE_PROJECT } from '../../../graphql/mutations/project/projectMutation';
 import { getFriendlyErrorMessage } from '../../../utils/errorHandler';
 import ErrorMessage from '../../../components/ui/ErrorMessage';
 

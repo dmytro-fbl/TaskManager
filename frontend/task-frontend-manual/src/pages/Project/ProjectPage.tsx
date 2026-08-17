@@ -6,6 +6,8 @@ import { CreateProjectForm } from "./components/CreateProjectForm";
 import ErrorMessage from "../../components/ui/ErrorMessage";
 import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
+import { GET_PROJECTS } from "../../graphql/queries/project/projectQuery";
+
 interface Project {
     id: string;
     title: string;
@@ -18,21 +20,7 @@ interface Project {
     updatedAt?: string | null;
 }
 
-const GET_PROJECTS = gql`
-  query GetProjects {
-    myProjects {
-      id
-      title
-      description
-      budgetCap
-      status
-      ownerId
-      isArchived
-      createdAt
-      updatedAt
-    }
-  }
-`;
+
 
 export const ProjectsPage: React.FC = () => {
     const [showCreateForm, setShowCreateForm] = useState(false);

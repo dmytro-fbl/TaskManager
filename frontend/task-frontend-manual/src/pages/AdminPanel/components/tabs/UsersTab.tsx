@@ -3,8 +3,8 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { FiShield, FiLock, FiUnlock } from 'react-icons/fi';
 import { getFriendlyErrorMessage } from "../../../../utils/errorHandler";
 import User from "../../../../types/User";
-import { GET_USERS_QUERY } from "../../../../graphql/queries/userQuery";
-import { TOGGLE_USER_ROLE, TOGGLE_USER_STATUS } from "../../../../graphql/mutations/userMutations";
+import { GET_USERS_QUERY } from "../../../../graphql/queries/user/userQuery";
+import { TOGGLE_USER_ROLE, TOGGLE_USER_STATUS } from "../../../../graphql/mutations/user/userMutations";
 
 interface GetUserData {
     users: User[];

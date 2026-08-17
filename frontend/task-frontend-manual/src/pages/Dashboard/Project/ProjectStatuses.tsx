@@ -1,19 +1,6 @@
-import { gql } from "@apollo/client";
 import { useQuery } from "@apollo/client/react";
+import { GET_PROJECT_STATUSES } from "../../../graphql/queries/project/projectQuery";
 
-const GET_PROJECT_STATUSES = gql`
-    query GetProjectStatuses($projectId: UUID!) {
-        projectStatuses(projectId: $projectId) {
-            id
-            projectId
-            name
-            category
-            color
-            sortOrder
-            isFinal
-        }
-    }
-`;
 
 type ProjectStatus = {
     id: string;
@@ -36,10 +23,10 @@ type ProjectStatusesProps = {
 };
 
 export function ProjectStatuses({
-                                    projectId,
-                                    selectedStatusId,
-                                    onChange,
-                                }: ProjectStatusesProps) {
+    projectId,
+    selectedStatusId,
+    onChange,
+}: ProjectStatusesProps) {
     const { data, loading, error } = useQuery<ProjectStatusesData>(
         GET_PROJECT_STATUSES,
         {

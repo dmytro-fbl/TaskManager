@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { ADD_USER_TO_PROJECT } from "../../../graphql/mutations/projectInviteMutations"; 
+import { ADD_USER_TO_PROJECT } from "../../../graphql/mutations/project/projectInviteMutations"; 
 import ErrorMessage from "../../../components/ui/ErrorMessage";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import { FiUserPlus } from "react-icons/fi";

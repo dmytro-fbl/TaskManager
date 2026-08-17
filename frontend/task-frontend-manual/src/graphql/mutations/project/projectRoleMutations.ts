@@ -15,3 +15,12 @@ export const UPDATE_PROJECT_MEMBER_ROLE = gql`
     )
   }
 `;
+
+export const CREATE_PROJECT_ROLE = gql`
+    mutation CreateProjectRole($projectId: UUID!, $name: String!) {
+        createProjectRole(projectId: $projectId, name: $name) {
+            id
+            name
+        }
+    }
+`;

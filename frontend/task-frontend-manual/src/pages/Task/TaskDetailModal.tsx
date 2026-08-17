@@ -12,15 +12,21 @@ import {
     FiActivity,
     FiFlag,
     FiSave,
-    FiList
+    FiList,
+    FiBriefcase
 } from "react-icons/fi";
 import { getFriendlyErrorMessage } from "../../utils/errorHandler";
+
+import { GET_PROJECT_DETAILS_FOR_TASK } from "../../graphql/queries/project/projectQuery";
+import { GET_TASK_WORKLOGS } from "../../graphql/queries/task/taskQueries";
+import { LOG_WORK } from "../../graphql/queries/task/taskQueries";
 
 type Task = {
     id: string;
     projectId: string;
     authorId: string;
     assigneeId?: string | null;
+    roleId?:string | null;
     statusId: string;
     title: string;
     notes?: string | null;
@@ -29,6 +35,11 @@ type Task = {
 };
 
 type ProjectStatus = {
+    id: string;
+    name: string;
+};
+
+type ProjectRole = {
     id: string;
     name: string;
 };
@@ -52,59 +63,16 @@ type ProjectDetailsResponse = {
     projectTasks: Task[];
     projectStatuses: ProjectStatus[];
     projectMemberships: Membership[];
+    projectRoles: ProjectRole[];
 };
 
 type WorklogsResponse = {
     taskWorklogs: Worklog[];
 };
 
-const GET_PROJECT_DETAILS_FOR_TASK = gql`
-    query GetProjectDetailsForTask($projectId: UUID!) {
-        projectTasks(projectId: $projectId) {
-            id
-            projectId 
-            authorId 
-            assigneeId 
-            statusId 
-            title 
-            notes 
-            priority 
-            startDate 
-            dueDate  
-            createdAt 
-            updatedAt
-        }
-        projectStatuses(projectId: $projectId) 
-        { 
-         id 
-         name 
-         category 
-         color 
-        }
-        projectMemberships(projectId: $projectId) { 
-        userId
-         user {
-          id 
-          name 
-          email
-            } 
-        }
-    }
-`;
 
-const GET_TASK_WORKLOGS = gql`
-    query GetTaskWorklogs($taskId: UUID!) {
-        taskWorklogs(taskId: $taskId) {
-            id taskId userId userName hoursSpent logDate comment
-        }
-    }
-`;
 
-const LOG_WORK = gql`
-    mutation LogWork($input: WorkLogInput!) {
-        logWork(input: $input)
-    }
-`;
+
 
 export const TaskDetailsPage: React.FC = () => {
     const { projectId, taskId } = useParams();
@@ -142,6 +110,7 @@ export const TaskDetailsPage: React.FC = () => {
 
     const status = projectQuery.data?.projectStatuses?.find((s) => s.id === task.statusId);
     const assignee = projectQuery.data?.projectMemberships?.find((m) => m.userId === task.assigneeId)?.user;
+    const role = projectQuery.data?.projectRoles?.find((r) => r.id === task.roleId);
 
     const worklogs = worklogsQuery.data?.taskWorklogs ?? [];
     const totalHoursLogged = worklogs.reduce((sum, item) => sum + Number(item.hoursSpent || 0), 0);
@@ -292,6 +261,12 @@ export const TaskDetailsPage: React.FC = () => {
                             <FiCalendar size={12} /> Дедлайн
                         </span>
                         <span className="text-sm font-semibold text-text-main pl-5">{formatDate(task.dueDate)}</span>
+                    </div>
+                    <div>
+                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
+                            <FiBriefcase size={12} /> Роль
+                        </span>
+                        <span className="text-sm font-semibold text-text-main pl-5">{role?.name ?? "Не вказано"}</span>
                     </div>
                 </div>
             </div>

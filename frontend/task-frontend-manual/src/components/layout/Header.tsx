@@ -2,7 +2,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { gql } from '@apollo/client';
 import { useQuery, useMutation } from '@apollo/client/react';
 import { Check } from "lucide-react";
-import { LOGOUT_MUTATION } from '../../graphql/mutations/logoutMutations';
+
+import { LOGOUT_MUTATION } from '../../graphql/mutations/autorization/autorizationMutations';
+
+import { GET_ME_QUERY } from '../../graphql/queries/autorization/autorizationQueries';
 
 export interface GetMeData {
   me: {
@@ -12,15 +15,6 @@ export interface GetMeData {
   } | null;
 }
 
-export const GET_ME_QUERY = gql`
-  query GetMe {
-    me{
-      id
-      name
-      isAdmin    
-    }
-  }
-`;
 
 export default function Header() {
   const navigate = useNavigate();

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@apollo/client/react';
-import { VERIFY_TOKEN_QUERY } from '../../graphql/queries/inviteQueries';
-import { COMPLETE_REGISTRATION_MUTATION } from '../../graphql/mutations/invateMutations';
+import { VERIFY_TOKEN_QUERY } from '../../graphql/queries/autorization/autorizationQueries';
+import { COMPLETE_REGISTRATION_MUTATION } from '../../graphql/mutations/autorization/invateMutations';
 import ErrorMessage from '../../components/ui/ErrorMessage';
 import { getFriendlyErrorMessage } from '../../utils/errorHandler';
 

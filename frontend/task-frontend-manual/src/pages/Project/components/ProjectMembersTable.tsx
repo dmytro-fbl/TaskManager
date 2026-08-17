@@ -3,8 +3,12 @@ import { useQuery, useMutation } from "@apollo/client/react";
 import { gql } from "@apollo/client";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
-import { UPDATE_PROJECT_MEMBER_ROLE } from "../../../graphql/mutations/projectRoleMutations";
-import { REMOVE_PROJECT_MEMBER } from "../../../graphql/mutations/projectMutation";
+
+import { UPDATE_PROJECT_MEMBER_ROLE } from "../../../graphql/mutations/project/projectRoleMutations";
+import { REMOVE_PROJECT_MEMBER } from "../../../graphql/mutations/project/projectMutation";
+
+import { GET_ME_QUERY } from "../../../graphql/queries/autorization/autorizationQueries";
+import { GET_PROJECT_MEMBERSHIPS } from "../../../graphql/queries/project/projectQuery";
 
 interface ProjectMembership {
     id: string;
@@ -29,34 +33,7 @@ interface GetMeData {
     } | null;
 }
 
-const GET_ME_QUERY = gql`
-  query GetMe {
-    me {
-      id
-      name
-      isAdmin
-    }
-  }
-`;
 
-const GET_PROJECT_MEMBERSHIPS = gql`
-  query GetProjectMemberships($projectId: UUID!) {
-    projectMemberships(projectId: $projectId) {
-      id
-      projectId
-      userId
-      projectRole
-      roleLabelId
-      joinedAt
-      user {
-        id
-        name
-        email
-        isAdmin
-      }
-    }
-  }
-`;
 
 interface ProjectMembersTableProps {
     projectId: string;

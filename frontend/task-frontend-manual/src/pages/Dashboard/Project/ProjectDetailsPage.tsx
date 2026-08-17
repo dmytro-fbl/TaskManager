@@ -17,7 +17,7 @@ import { ProjectStatuses } from "./ProjectStatuses";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import { EditProjectModal } from "../../Project/components/EditProjectModel";
-
+import { GET_PROJECT_DETAILS } from "../../../graphql/queries/project/projectQuery";
 interface Project {
     id: string;
     title: string;
@@ -29,20 +29,7 @@ interface Project {
     createdAt: string;
 }
 
-const GET_PROJECT_DETAILS = gql`
-  query GetProjectDetails($id: UUID!) {
-    project(id: $id) {
-      id
-      title
-      description
-      budgetCap
-      deadline
-      status
-      isArchived
-      createdAt
-    }
-  }
-`;
+
 
 export const ProjectDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();

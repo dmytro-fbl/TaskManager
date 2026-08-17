@@ -3,7 +3,6 @@ import React, {
     useMemo,
     useState,
 } from "react";
-import { gql } from "@apollo/client";
 import {
     useMutation,
     useQuery,
@@ -12,125 +11,19 @@ import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import { useNavigate } from "react-router-dom";
 import { FiTrash2 } from "react-icons/fi";
 
-const GET_PROJECT_TASKS = gql`
-    query GetProjectTasks($projectId: UUID!) {
-        projectTasks(projectId: $projectId) {
-            id
-            projectId
-            authorId
-            assigneeId
-            statusId
-            title
-            notes
-            priority
-            startDate
-            dueDate
-            createdAt
-            updatedAt
-        }
-    }
-`;
 
-const GET_PROJECT_STATUSES = gql`
-    query GetProjectTaskStatuses($projectId: UUID!) {
-        projectStatuses(projectId: $projectId) {
-            id
-            name
-            category
-            color
-            sortOrder
-            isFinal
-        }
-    }
-`;
+import { GET_PROJECT_TASKS } from "../../../graphql/queries/task/taskQueries";
+import { GET_PROJECT_STATUSES } from "../../../graphql/queries/project/projectQuery";
+import { GET_PROJECT_MEMBERSHIPS } from "../../../graphql/queries/project/projectQuery";
+import { GET_PROJECT_ROLES } from "../../../graphql/queries/project/projectQuery";
 
-const GET_PROJECT_MEMBERSHIPS = gql`
-    query GetProjectTaskMembers($projectId: UUID!) {
-        projectMemberships(projectId: $projectId) {
-            id
-            userId
-            user {
-                id
-                name
-                email
-                isAdmin
-            }
-        }
-    }
-`;
+import { CREATE_TASK } from "../../../graphql/mutations/taskmut/taskMutation";
+import { ASSIGN_USER_TO_TASK } from "../../../graphql/mutations/taskmut/taskMutation";
+import { UPDATE_TASK_STATUS } from "../../../graphql/mutations/taskmut/taskMutation";
+import { DELETE_TASK_MUTATION } from "../../../graphql/mutations/taskmut/taskMutation";
+import { CREATE_PROJECT_ROLE } from "../../../graphql/mutations/project/projectRoleMutations";
 
-const GET_PROJECT_ROLES = gql`
-    query GetProjectRoles($projectId: UUID!) {
-        projectRoles(projectId: $projectId) {
-            id
-            projectId
-            name
-        }
-    }
-`;
 
-const CREATE_TASK = gql`
-    mutation CreateTask($input: CreateTaskInput!) {
-        createTask(input: $input) {
-            id
-            projectId
-            assigneeId
-            statusId
-            title
-            notes
-            priority
-            startDate
-            dueDate
-            createdAt
-            updatedAt
-        }
-    }
-`;
-
-const ASSIGN_USER_TO_TASK = gql`
-    mutation AssignUserToTask(
-        $taskId: UUID!
-        $userId: UUID!
-        $estimatedHours: Decimal!
-    ) {
-        assignUserToTask(
-            taskId: $taskId
-            userId: $userId
-            estimatedHours: $estimatedHours
-        )
-    }
-`;
-
-const UPDATE_TASK_STATUS = gql`
-    mutation UpdateTaskStatus(
-        $taskId: UUID!
-        $statusId: UUID!
-    ) {
-        updateTaskStatus(
-            taskId: $taskId
-            statusId: $statusId
-        ) {
-            id
-            statusId
-            updatedAt
-        }
-    }
-`;
-
-const DELETE_TASK_MUTATION = gql`
-  mutation DeleteTask($taskId: UUID!) {
-    deleteTask(taskId: $taskId)
-  }
-`;
-
-const CREATE_PROJECT_ROLE = gql`
-    mutation CreateProjectRole($projectId: UUID!, $name: String!) {
-        createProjectRole(projectId: $projectId, name: $name) {
-            id
-            name
-        }
-    }
-`;
 
 type CreateProjectRoleResponse = {
     createProjectRole: {
@@ -186,6 +79,7 @@ type ProjectRole = {
 };
 
 type CreateTaskInput = {
+    roleId: string | null;
     projectId: string;
     statusId: string;
     title: string;
@@ -303,6 +197,7 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                     input: {
                         projectId,
                         statusId: selectedStatusId,
+                        roleId: selectedRoleId || null,
                         title: title.trim(),
                         notes: notes.trim() || null,
                         priority,

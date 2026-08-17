@@ -3,6 +3,8 @@ import { gql } from '@apollo/client';
 import { useMutation, useQuery } from '@apollo/client/react';
 import { FiPlus } from 'react-icons/fi';
 
+import { GET_PROJECT_ROLES } from '../../graphql/queries/project/projectQuery';
+
 type Role = {
     id: string;
     name: string;
@@ -16,14 +18,7 @@ type ProjectRolesManagerProps = {
     projectId: string; 
 };
 
-const GET_PROJECT_ROLES = gql`
-    query GetProjectRoles($projectId: UUID!) {
-        projectRoles(projectId: $projectId) {
-            id
-            name
-        }
-    }
-`;
+
 
 const CREATE_PROJECT_ROLE = gql`
     mutation CreateProjectRole($projectId: UUID!, $name: String!) {

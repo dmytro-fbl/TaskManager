@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { FiClock, FiAlertCircle, FiCopy, FiPlus, FiX } from "react-icons/fi";
 import { getFriendlyErrorMessage } from "../../../../utils/errorHandler";
-import { GET_PENDING_INVITES_QUERY } from "../../../../graphql/queries/userQuery";
-import { GENERATE_INVITE_MUTATIONS } from "../../../../graphql/mutations/invateMutations";
+import { GET_PENDING_INVITES_QUERY } from "../../../../graphql/queries/user/userQuery";
+import { GENERATE_INVITE_MUTATIONS } from "../../../../graphql/mutations/autorization/invateMutations";
 import ErrorMessage from "../../../../components/ui/ErrorMessage";
 
 

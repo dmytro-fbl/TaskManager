@@ -1,7 +1,8 @@
 import { Navigate, Outlet } from "react-router-dom";
 import { useQuery } from "@apollo/client/react";
 
-import { GET_ME_QUERY, GetMeData } from "./Header";
+import { GetMeData } from "./Header";
+import { GET_ME_QUERY } from "../../graphql/queries/autorization/autorizationQueries";
 
 
 
