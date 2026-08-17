@@ -2,7 +2,6 @@ import React, {
     FormEvent,
     useMemo,
     useState,
-    useEffect 
 } from "react";
 import { gql } from "@apollo/client";
 import {
@@ -10,6 +9,8 @@ import {
     useQuery,
 } from "@apollo/client/react";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
+import { useNavigate } from "react-router-dom";
+import { FiTrash2 } from "react-icons/fi";
 
 const GET_PROJECT_TASKS = gql`
     query GetProjectTasks($projectId: UUID!) {
@@ -24,8 +25,6 @@ const GET_PROJECT_TASKS = gql`
             priority
             startDate
             dueDate
-            estimatedBudget
-            estimatedUnit
             createdAt
             updatedAt
         }
@@ -64,8 +63,8 @@ const GET_PROJECT_ROLES = gql`
     query GetProjectRoles($projectId: UUID!) {
         projectRoles(projectId: $projectId) {
             id
+            projectId
             name
-            hourlyRate
         }
     }
 `;
@@ -82,24 +81,7 @@ const CREATE_TASK = gql`
             priority
             startDate
             dueDate
-            estimatedBudget
-            estimatedUnit
             createdAt
-            updatedAt
-        }
-    }
-`;
-
-const UPDATE_TASK_DETAILS = gql`
-    mutation UpdateTaskDetails($input: UpdateTaskInput!) {
-        updateTaskDetails(input: $input) {
-            id
-            title
-            notes
-            priority
-            dueDate
-            estimatedBudget
-            estimatedUnit
             updatedAt
         }
     }
@@ -135,7 +117,32 @@ const UPDATE_TASK_STATUS = gql`
     }
 `;
 
+const DELETE_TASK_MUTATION = gql`
+  mutation DeleteTask($taskId: UUID!) {
+    deleteTask(taskId: $taskId)
+  }
+`;
 
+const CREATE_PROJECT_ROLE = gql`
+    mutation CreateProjectRole($projectId: UUID!, $name: String!) {
+        createProjectRole(projectId: $projectId, name: $name) {
+            id
+            name
+        }
+    }
+`;
+
+type CreateProjectRoleResponse = {
+    createProjectRole: {
+        id: string;
+        name: string;
+    } | null;
+};
+
+type CreateProjectRoleVariables = {
+    projectId: string;
+    name: string;
+};
 
 type Task = {
     id: string;
@@ -148,8 +155,6 @@ type Task = {
     priority: string;
     startDate?: string | null;
     dueDate?: string | null;
-    estimatedBudget?: number | null;
-    estimatedUnit?: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -188,8 +193,6 @@ type CreateTaskInput = {
     priority: string;
     startDate: string | null;
     dueDate: string | null;
-    estimatedBudget: number | null;
-    estimatedUnit: string | null;
 };
 
 type CreateTaskResponse = {
@@ -223,20 +226,12 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
     const [dueDate, setDueDate] = useState("");
     const [assigneeId, setAssigneeId] = useState("");
     const [estimatedHours, setEstimatedHours] = useState("");
-    
+
     const [selectedRoleId, setSelectedRoleId] = useState("");
-    const [estimatedBudget, setEstimatedBudget] = useState<number | "">("");
-    
+
     const [formError, setFormError] = useState("");
 
-    const [editingTask, setEditingTask] = useState<Task | null>(null);
-    const [editForm, setEditForm] = useState({
-        title: "",
-        notes: "",
-        priority: "medium",
-        dueDate: "",
-        estimatedBudget: "" as number | "",
-    });
+    const navigate = useNavigate();
 
     const tasksQuery = useQuery<{ projectTasks: Task[] }>(GET_PROJECT_TASKS, {
         variables: { projectId },
@@ -259,7 +254,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
     });
 
     const [createTask, { loading: creating }] = useMutation<CreateTaskResponse, { input: CreateTaskInput }>(CREATE_TASK);
-    const [updateTaskDetails, { loading: updating }] = useMutation(UPDATE_TASK_DETAILS);
     const [assignUserToTask] = useMutation(ASSIGN_USER_TO_TASK);
     const [updateTaskStatus] = useMutation(UPDATE_TASK_STATUS);
 
@@ -268,6 +262,17 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
     const memberships = membershipsQuery.data?.projectMemberships ?? [];
     const roles = rolesQuery.data?.projectRoles ?? [];
 
+    const [isAddingRole, setIsAddingRole] = useState(false);
+    const [newRoleName, setNewRoleName] = useState("");
+    const [roleError, setRoleError] = useState("");
+
+    const [createRole, { loading: creatingRole }] = useMutation<
+        CreateProjectRoleResponse,
+        CreateProjectRoleVariables
+    >(CREATE_PROJECT_ROLE, {
+        refetchQueries: [{ query: GET_PROJECT_ROLES, variables: { projectId } }]
+    });
+
     const statusMap = useMemo(() => {
         return new Map(statuses.map((status) => [status.id, status]));
     }, [statuses]);
@@ -275,21 +280,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
     const memberMap = useMemo(() => {
         return new Map(memberships.map((membership) => [membership.userId, membership.user]));
     }, [memberships]);
-
-    useEffect(() => {
-        if (selectedRoleId && estimatedHours) {
-            const role = roles.find((r) => r.id === selectedRoleId);
-            const hours = Number(estimatedHours);
-            if (role && !isNaN(hours) && hours > 0) {
-                const rate = Number(role.hourlyRate);
-                if (!isNaN(rate)) {
-                    setEstimatedBudget(Number((rate * hours).toFixed(2)));
-                }
-            }
-        } else {
-            setEstimatedBudget("");
-        }
-    }, [selectedRoleId, estimatedHours, roles]);
 
     const handleCreateTask = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -318,8 +308,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                         priority,
                         startDate: null,
                         dueDate: toGraphQLDate(dueDate),
-                        estimatedBudget: estimatedBudget !== "" ? Number(estimatedBudget) : null,
-                        estimatedUnit: estimatedBudget !== "" ? "USD" : null,
                     },
                 },
             });
@@ -342,49 +330,11 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
             setAssigneeId("");
             setEstimatedHours("");
             setSelectedRoleId("");
-            setEstimatedBudget("");
             setStatusId("");
 
             await tasksQuery.refetch();
         } catch (error: any) {
             setFormError(getFriendlyErrorMessage(error) ?? "Не вдалося створити таску.");
-        }
-    };
-
-    const handleEditClick = (task: Task) => {
-        setEditingTask(task);
-        setEditForm({
-            title: task.title,
-            notes: task.notes || "",
-            priority: task.priority,
-            dueDate: task.dueDate ? task.dueDate.split("T")[0] : "",
-            estimatedBudget: task.estimatedBudget || "",
-        });
-    };
-
-    const handleUpdateTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!editingTask) return;
-
-        try {
-            await updateTaskDetails({
-                variables: {
-                    input: {
-                        taskId: editingTask.id,
-                        title: editForm.title.trim(),
-                        notes: editForm.notes.trim() || null,
-                        priority: editForm.priority,
-                        startDate: null,
-                        dueDate: toGraphQLDate(editForm.dueDate),
-                        estimatedBudget: editForm.estimatedBudget !== "" ? Number(editForm.estimatedBudget) : null,
-                        estimatedUnit: editForm.estimatedBudget !== "" ? "USD" : null,
-                    }
-                }
-            });
-            setEditingTask(null);
-            await tasksQuery.refetch();
-        } catch (error: any) {
-            alert(getFriendlyErrorMessage(error) ?? "Не вдалося оновити таску.");
         }
     };
 
@@ -396,6 +346,50 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
             await tasksQuery.refetch();
         } catch (error: any) {
             alert(getFriendlyErrorMessage(error) ?? "Не вдалося змінити статус таски.");
+        }
+    };
+
+    const handleCreateCustomRole = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        setRoleError("");
+
+        if (!newRoleName.trim()) return;
+
+        try {
+            const { data } = await createRole({
+                variables: { projectId, name: newRoleName.trim() }
+            });
+
+            const newId = data?.createProjectRole?.id;
+            if (newId) {
+                setSelectedRoleId(newId);
+            }
+
+            setNewRoleName("");
+            setIsAddingRole(false);
+        } catch (err: any) {
+            setRoleError(err.message || "Не вдалося створити роль.");
+        }
+    };
+
+    const [deleteTaskMutation] = useMutation(DELETE_TASK_MUTATION);
+
+    const handleDeleteTask = async (taskId: string) => {
+        const isConfirmed = window.confirm("Ви впевнені, що хочете видалити цю таску? Дія незворотня.");
+        if (!isConfirmed) return;
+
+        try {
+            await deleteTaskMutation({
+                variables: { taskId },
+
+                update: (cache) => {
+                    cache.evict({ id: cache.identify({ __typename: 'TaskItem', id: taskId }) });
+                    cache.gc();
+                }
+            });
+        } catch (error: any) {
+
+            alert(error.message || "Сталася помилка при видаленні таски.");
         }
     };
 
@@ -535,36 +529,66 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                         </div>
 
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-text-main">
-                                Роль (для бюджету)
-                            </label>
-                            <select
-                                value={selectedRoleId}
-                                onChange={(e) => setSelectedRoleId(e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
-                            >
-                                <option value="">Оберіть роль</option>
-                                {roles.map((role) => (
-                                    <option key={role.id} value={role.id}>
-                                        {role.name} (${role.hourlyRate}/год)
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                            <div className="mb-1 flex items-center justify-between">
+                                <label className="block text-sm font-medium text-text-main">
+                                    Роль
+                                </label>
+                                {!isAddingRole && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddingRole(true)}
+                                        className="flex items-center gap-1 text-xs font-medium text-blue-600 transition hover:text-blue-700"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                        </svg>
+                                        Нова роль
+                                    </button>
+                                )}
+                            </div>
 
-                        <div className="md:col-span-2">
-                            <label className="mb-1 block text-sm font-medium text-text-main">
-                                Орієнтовний бюджет ($)
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={estimatedBudget}
-                                onChange={(e) => setEstimatedBudget(e.target.value === "" ? "" : Number(e.target.value))}
-                                className="w-full rounded-lg border border-gray-300 px-3 py-2 bg-blue-50/50"
-                                placeholder="Бюджет буде розраховано автоматично..."
-                            />
+                            {isAddingRole ? (
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={newRoleName}
+                                            onChange={(e) => setNewRoleName(e.target.value)}
+                                            placeholder="Назва ролі"
+                                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleCreateCustomRole}
+                                            disabled={creatingRole || !newRoleName.trim()}
+                                            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                                        >
+                                            {creatingRole ? "..." : "Зберегти"}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => { setIsAddingRole(false); setRoleError(""); setNewRoleName(""); }}
+                                            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                        >
+                                            Скасувати
+                                        </button>
+                                    </div>
+                                    {roleError && <span className="text-xs text-red-600">{roleError}</span>}
+                                </div>
+                            ) : (
+                                <select
+                                    value={selectedRoleId}
+                                    onChange={(e) => setSelectedRoleId(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2"
+                                >
+                                    <option value="">Оберіть роль</option>
+                                    {roles.map((role) => (
+                                        <option key={role.id} value={role.id}>
+                                            {role.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
 
                         <div className="md:col-span-2">
@@ -598,9 +622,11 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                             return (
                                 <article
                                     key={task.id}
-                                    className="space-y-3 p-6 hover:bg-gray-50/50 transition-colors"
+                                    onClick={() => navigate(`/projects/${projectId}/tasks/${task.id}`)}
+                                    className="space-y-3 p-6 hover:bg-gray-50/50 transition-colors relative group cursor-pointer"
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-4">
+                                        {/* Ліва частина: Заголовок і опис */}
                                         <div>
                                             <h3 className="text-lg font-semibold text-text-main">
                                                 {task.title}
@@ -610,28 +636,41 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                             </p>
                                         </div>
 
-                                        <select
-                                            value={task.statusId}
-                                            onChange={(e) => handleStatusChange(task.id, e.target.value)}
-                                            disabled={isArchived}
-                                            className={`rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm ${isArchived ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
-                                            style={{ borderColor: status?.color ?? undefined }}
-                                        >
-                                            {statuses.map((item) => (
-                                                <option key={item.id} value={item.id}>
-                                                    {item.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        {/* Права частина: Статус та кнопка видалення */}
+                                        <div className="flex flex-col items-end gap-3">
+                                            <select
+                                                value={task.statusId}
+                                                onChange={(e) => handleStatusChange(task.id, e.target.value)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                disabled={isArchived}
+                                                className={`min-w-[160px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm ${isArchived ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                                                style={{ borderColor: status?.color ?? undefined }}
+                                            >
+                                                {statuses.map((item) => (
+                                                    <option key={item.id} value={item.id}>
+                                                        {item.name}
+                                                    </option>
+                                                ))}
+                                            </select>
 
-                                        {!isArchived && (
-                                                <button 
-                                                    onClick={() => handleEditClick(task)}
-                                                    className="text-xs font-medium text-blue-600 hover:text-blue-800 transition"
+                                            {!isArchived && (
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        try {
+                                                            await handleDeleteTask(task.id);
+                                                        } catch (error: any) {
+                                                            alert(error.message || "Не вдалося видалити таску.");
+                                                        }
+                                                    }}
+                                                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 hover:border-red-300"
+                                                    title="Видалити таску"
                                                 >
-                                                    Редагувати
+                                                    <FiTrash2 className="h-4 w-4" />
+                                                    Видалити
                                                 </button>
                                             )}
+                                        </div>
                                     </div>
 
                                     <div className="grid gap-3 text-sm text-text-muted md:grid-cols-4">
@@ -644,10 +683,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                         <div>
                                             <span className="font-medium text-text-main">Дедлайн:</span> {formatDate(task.dueDate)}
                                         </div>
-                                        <div>
-                                            <span className="font-medium text-text-main">Бюджет:</span>{" "}
-                                            {task.estimatedBudget ? `$${Number(task.estimatedBudget).toFixed(2)}` : "—"}
-                                        </div>
                                     </div>
 
                                     <div className="text-xs text-text-muted">
@@ -659,56 +694,6 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                     </div>
                 )}
             </div>
-
-            {editingTask && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
-                        <h2 className="mb-4 text-xl font-bold text-text-main">Редагувати таску</h2>
-                        
-                        <form onSubmit={handleUpdateTask} className="grid gap-4">
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-text-main">Назва</label>
-                                <input required value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-text-main">Опис</label>
-                                <textarea value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={3} className="w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-text-main">Пріоритет</label>
-                                    <select value={editForm.priority} onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2">
-                                        <option value="low">Низький</option>
-                                        <option value="medium">Середній</option>
-                                        <option value="high">Високий</option>
-                                        <option value="critical">Критичний</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-text-main">Дедлайн</label>
-                                    <input type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2" />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-text-main">Фіксований Бюджет ($)</label>
-                                <input type="number" min="0" step="0.01" value={editForm.estimatedBudget} onChange={(e) => setEditForm({ ...editForm, estimatedBudget: e.target.value === "" ? "" : Number(e.target.value) })} className="w-full rounded-lg border border-gray-300 px-3 py-2" placeholder="Наприклад: 500" />
-                            </div>
-
-                            <div className="mt-4 flex justify-end gap-3">
-                                <button type="button" onClick={() => setEditingTask(null)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
-                                    Скасувати
-                                </button>
-                                <button type="submit" disabled={updating} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition disabled:opacity-50">
-                                    {updating ? "Збереження..." : "Зберегти зміни"}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </section>
     );
 };

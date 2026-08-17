@@ -42,6 +42,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         Task AddDefaultProjectRolesAsync(Guid projectId);
 
         Task<IEnumerable<ProjectRoleDTO>> GetProjectRolesAsync(Guid projectId);
+        Task<ProjectRoleDTO> CreateProjectRoleAsync(Guid projectId, string roleName);
 
     }
 }

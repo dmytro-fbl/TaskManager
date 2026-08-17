@@ -93,13 +93,6 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 );
             }
 
-            if (input.EstimatedBudget is < 0)
-            {
-                throw new GraphQLException(
-                    "Орієнтовний бюджет не може бути від'ємним."
-                );
-            }
-
             var task = new TaskItem
             {
                 ProjectId = input.ProjectId,
@@ -110,8 +103,6 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 Priority = priority,
                 StartDate = input.StartDate,
                 DueDate = input.DueDate,
-                EstimatedBudget = input.EstimatedBudget,
-                EstimatedUnit = input.EstimatedUnit?.Trim(),
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
             };
@@ -262,6 +253,85 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             return await taskRepository.GetTaskByIdAsync(input.TaskId)
                    ?? throw new GraphQLException("Таску оновлено, але не вдалося отримати дані.");
 
+        }
+
+        [Authorize]
+        public async Task<bool> LogWork(
+            WorkLogInput input,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] ITaskRepository taskRepository,
+            [Service] IUserRepository userRepository,
+            [Service] IProjectRepository projectRepository)
+        {
+            if (input.HoursSpent <= 0)
+                throw new GraphQLException("Не коректний час.");
+
+            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var user = await userRepository.GetUserByIdAsync(currentUserId);
+            if (user == null)
+                throw new GraphQLException("Користувача не знайдено.");
+            
+            var existingTask = await taskRepository.GetTaskByIdAsync(input.TaskId);
+            if (existingTask == null)
+                throw new GraphQLException("Таску не знайдено.");
+            var hasAccess = user.IsAdmin || await projectRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
+            if (!hasAccess)
+                throw new GraphQLException("У вас не має доступу до цієї таски.");
+
+            return await taskRepository.AddWorkLogAsync(currentUserId, input);
+
+        }
+
+        [Authorize]
+        public async Task<bool> DeleteTaskAsync(
+            Guid taskId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] ITaskRepository taskRepository,
+            [Service] IUserRepository userRepository,
+            [Service] IProjectRepository projectRepository)
+        {
+            var userId = GetCurrentUserId(claimsPrincipal);
+            var currentUser = await userRepository.GetUserByIdAsync(userId);
+            if (currentUser == null)
+                throw new GraphQLException("Користувача не знайдено.");
+
+            var task = await taskRepository.GetTaskByIdAsync(taskId);
+
+            if (task == null)
+            {
+                throw new GraphQLException("Таску не знайдено.");
+            }
+
+            var hasProjectAccess = currentUser.IsAdmin ||
+                await projectRepository.IsUserInProjectAsync(
+                    task.ProjectId,
+                    userId
+                );
+
+            if (!hasProjectAccess)
+            {
+                throw new GraphQLException(
+                    "У вас немає доступу до проєкту цієї таски."
+                );
+            }
+
+            var hasWorkLogs = await taskRepository.HasWorkLogsAsync(taskId);
+
+            if (hasWorkLogs)
+            {
+                throw new GraphQLException(
+                    "Неможливо видалити таску, оскільки за нею вже залоговано години."
+                );
+            }
+
+            var isDeleted = await taskRepository.DeleteTaskAsync(taskId);
+
+            if (!isDeleted)
+            {
+                throw new GraphQLException("Не вдалося видалити таску.");
+            }
+
+            return true;
         }
     }
 }

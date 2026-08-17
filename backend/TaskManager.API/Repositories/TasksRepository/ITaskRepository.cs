@@ -22,5 +22,11 @@ namespace TaskManager.API.Repositories.TasksRepository
         Task<bool> HasUserTasksInProjectAsync(Guid projectId, Guid userId);
 
         Task<bool> UpdateTaskAsync(UpdateTaskInput input);
-    } 
+
+        Task<bool> AddWorkLogAsync(Guid userId, WorkLogInput input);
+        Task<IEnumerable<WorkLogDTO>> GetTaskWorkLogsAsync(Guid taskId);
+        Task<bool> DeleteTaskAsync(Guid taskId);
+        Task<bool> HasWorkLogsAsync(Guid taskId);
+        public Task<bool> IsRoleInProjectAsync(Guid projectId, Guid roleId);
+    }
 }

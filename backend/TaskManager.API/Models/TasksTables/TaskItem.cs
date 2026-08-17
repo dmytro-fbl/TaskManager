@@ -21,10 +21,6 @@
 
         public DateTime? DueDate { get; set; }
 
-        public decimal? EstimatedBudget { get; set; }
-
-        public string? EstimatedUnit { get; set; }
-
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
         public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
