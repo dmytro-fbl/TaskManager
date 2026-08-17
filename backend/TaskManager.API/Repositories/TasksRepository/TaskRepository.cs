@@ -499,5 +499,24 @@ namespace TaskManager.API.Repositories.TasksRepository
 
             return (bool)(await command.ExecuteScalarAsync() ?? false);
         }
+
+        public async Task<bool> IsRoleInProjectAsync(Guid projectId, Guid roleId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT EXISTS (
+                    SELECT 1 
+                    FROM app.project_role_labels 
+                    WHERE id = @role_id AND project_id = @project_id
+                );
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            AddParameter(command, "project_id", projectId);
+            AddParameter(command, "role_id", roleId);
+
+            return (bool)(await command.ExecuteScalarAsync() ?? false);
+        }
     }
 }

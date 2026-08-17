@@ -27,5 +27,6 @@ namespace TaskManager.API.Repositories.TasksRepository
         Task<IEnumerable<WorkLogDTO>> GetTaskWorkLogsAsync(Guid taskId);
         Task<bool> DeleteTaskAsync(Guid taskId);
         Task<bool> HasWorkLogsAsync(Guid taskId);
+        public Task<bool> IsRoleInProjectAsync(Guid projectId, Guid roleId);
     }
 }
