@@ -13,6 +13,7 @@ using TaskManager.API.Repositories.TasksRepository;
 using TaskManager.API.GraphQL.Mutations.Tasks;
 using TaskManager.API.Repositories.CommentsRepository;
 using TaskManager.API.Repositories.TaskCommentsRepository;
+using TaskManager.API.Services.TaskServices;
 
 namespace TaskManager.API
 {
@@ -98,9 +99,11 @@ namespace TaskManager.API
 
             builder.Services.AddScoped<ITaskRepository, TaskRepository>();
             builder.Services.AddScoped<ITaskCommentsRepository, TaskCommentsRepository>();
+
             builder.Services.AddScoped<IUserServices, UserServices>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<ITaskCommentService, TaskCommentService>();
 
             var app = builder.Build();
 
