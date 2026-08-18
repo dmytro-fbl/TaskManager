@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { gql } from "@apollo/client";
 import { useQuery, useMutation } from "@apollo/client/react";
 import {
     FiArrowLeft,
@@ -8,7 +7,6 @@ import {
     FiAlignLeft,
     FiCalendar,
     FiUser,
-    FiDollarSign,
     FiActivity,
     FiFlag,
     FiSave,
@@ -18,15 +16,16 @@ import {
 import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
 import { GET_PROJECT_DETAILS_FOR_TASK } from "../../graphql/queries/project/projectQuery";
-import { GET_TASK_WORKLOGS } from "../../graphql/queries/task/taskQueries";
-import { LOG_WORK } from "../../graphql/queries/task/taskQueries";
+import { GET_TASK_WORKLOGS, LOG_WORK } from "../../graphql/queries/task/taskQueries";
+
+import { TaskCommentsSection } from "./TaskComment/TaskCommentsSection";
 
 type Task = {
     id: string;
     projectId: string;
     authorId: string;
     assigneeId?: string | null;
-    roleId?:string | null;
+    roleId?: string | null;
     statusId: string;
     title: string;
     notes?: string | null;
@@ -34,23 +33,9 @@ type Task = {
     dueDate?: string | null;
 };
 
-type ProjectStatus = {
-    id: string;
-    name: string;
-};
-
-type ProjectRole = {
-    id: string;
-    name: string;
-};
-
-type Membership = {
-    userId: string;
-    user: {
-        name: string;
-    };
-};
-
+type ProjectStatus = { id: string; name: string; };
+type ProjectRole = { id: string; name: string; };
+type Membership = { userId: string; user: { name: string; }; };
 type Worklog = {
     id: string;
     userName: string;
@@ -69,10 +54,6 @@ type ProjectDetailsResponse = {
 type WorklogsResponse = {
     taskWorklogs: Worklog[];
 };
-
-
-
-
 
 export const TaskDetailsPage: React.FC = () => {
     const { projectId, taskId } = useParams();
@@ -170,7 +151,7 @@ export const TaskDetailsPage: React.FC = () => {
                     <span className="flex w-fit items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 uppercase">
                         <FiFlag size={12} /> {task.priority}
                     </span>
-                    <h1 className="text-2xl font-bold text-text-main">{task.title}</h1>
+                    <h1 className="text-2xl font-bold text-[#1f2937]">{task.title}</h1>
                 </div>
             </div>
 
@@ -180,14 +161,14 @@ export const TaskDetailsPage: React.FC = () => {
                         <h3 className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-500 uppercase tracking-wider">
                             <FiAlignLeft size={16} /> Опис завдання
                         </h3>
-                        <div className="rounded-xl bg-gray-50/50 p-4 text-sm text-text-main leading-relaxed min-h-[100px] border border-gray-100">
+                        <div className="rounded-xl bg-gray-50/50 p-4 text-sm text-[#374151] leading-relaxed min-h-[100px] border border-gray-100">
                             {task.notes?.trim() ? task.notes : "Опис відсутній."}
                         </div>
                     </div>
 
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="flex items-center gap-2 text-lg font-bold text-text-main">
+                            <h3 className="flex items-center gap-2 text-lg font-bold text-[#1f2937]">
                                 <FiClock className="text-blue-600" size={20} /> Трекінг часу
                             </h3>
                             <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
@@ -228,7 +209,7 @@ export const TaskDetailsPage: React.FC = () => {
                                     {worklogs.map((log) => (
                                         <div key={log.id} className="p-4 flex justify-between items-start hover:bg-gray-50/50 transition">
                                             <div className="space-y-1">
-                                                <div className="font-semibold text-text-main">{log.userName}</div>
+                                                <div className="font-semibold text-[#1f2937]">{log.userName}</div>
                                                 <p className="text-sm text-gray-600">{log.comment || "Без коментаря."}</p>
                                                 <div className="text-xs text-gray-400">{formatDateTime(log.logDate)}</div>
                                             </div>
@@ -241,32 +222,37 @@ export const TaskDetailsPage: React.FC = () => {
                             )}
                         </div>
                     </div>
+
+                    <TaskCommentsSection 
+                    taskId={task.id}
+                    memberships={projectQuery.data?.projectMemberships ?? []} />
                 </div>
 
+                {/* ПРАВА БІЧНА КОЛОНКА (Інформація) */}
                 <div className="space-y-4 rounded-2xl bg-white p-6 border border-gray-100 shadow-sm h-fit">
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
                             <FiActivity size={12} /> Статус
                         </span>
-                        <span className="text-sm font-semibold text-text-main pl-5">{status?.name ?? "—"}</span>
+                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{status?.name ?? "—"}</span>
                     </div>
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
                             <FiUser size={12} /> Виконавець
                         </span>
-                        <span className="text-sm font-semibold text-text-main pl-5">{assignee?.name ?? "Не призначено"}</span>
+                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{assignee?.name ?? "Не призначено"}</span>
                     </div>
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
                             <FiCalendar size={12} /> Дедлайн
                         </span>
-                        <span className="text-sm font-semibold text-text-main pl-5">{formatDate(task.dueDate)}</span>
+                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{formatDate(task.dueDate)}</span>
                     </div>
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
                             <FiBriefcase size={12} /> Роль
                         </span>
-                        <span className="text-sm font-semibold text-text-main pl-5">{role?.name ?? "Не вказано"}</span>
+                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{role?.name ?? "Не вказано"}</span>
                     </div>
                 </div>
             </div>

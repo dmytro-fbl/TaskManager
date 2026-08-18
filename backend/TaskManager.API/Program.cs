@@ -11,6 +11,9 @@ using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Services;
 using TaskManager.API.Repositories.TasksRepository;
 using TaskManager.API.GraphQL.Mutations.Tasks;
+using TaskManager.API.Repositories.CommentsRepository;
+using TaskManager.API.Repositories.TaskCommentsRepository;
+using TaskManager.API.Services.TaskServices;
 
 namespace TaskManager.API
 {
@@ -43,14 +46,24 @@ namespace TaskManager.API
                 .AddTypeExtension<InviteMutations>()
 
                 .AddTypeExtension<AuthMutations>()
+
                 .AddTypeExtension<ProjectQuery>()
-                .AddTypeExtension<TaskQuery>()
                 .AddTypeExtension<ProjectMutations>()
+
+                .AddTypeExtension<TaskQuery>()
                 .AddTypeExtension<TaskMutations>()
+
                 .AddTypeExtension<TaskAssignmentMutations>()
+
                 .AddTypeExtension<ProjectInviteMutations>()
+
                 .AddTypeExtension<ProjectRoleMutations>()
+
                 .AddTypeExtension<ProjectMembershipExtensions>()
+
+                .AddTypeExtension<TaskCommentQueries>()
+                .AddTypeExtension<TaskCommentMutations>()
+
 
             ;
 
@@ -89,13 +102,18 @@ namespace TaskManager.API
                 });
 
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            //builder.Services.AddScoped<IUserRepository, UserRepository>();
+
             builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
-            builder.Services.AddScoped<IUserRepository, UserRepository>();
-            builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+            //builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+
             builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+            builder.Services.AddScoped<ITaskCommentsRepository, TaskCommentsRepository>();
+
             builder.Services.AddScoped<IUserServices, UserServices>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<ITaskCommentService, TaskCommentService>();
 
             var app = builder.Build();
 
