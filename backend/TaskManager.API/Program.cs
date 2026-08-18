@@ -46,14 +46,24 @@ namespace TaskManager.API
                 .AddTypeExtension<InviteMutations>()
 
                 .AddTypeExtension<AuthMutations>()
+
                 .AddTypeExtension<ProjectQuery>()
-                .AddTypeExtension<TaskQuery>()
                 .AddTypeExtension<ProjectMutations>()
+
+                .AddTypeExtension<TaskQuery>()
                 .AddTypeExtension<TaskMutations>()
+
                 .AddTypeExtension<TaskAssignmentMutations>()
+
                 .AddTypeExtension<ProjectInviteMutations>()
+
                 .AddTypeExtension<ProjectRoleMutations>()
+
                 .AddTypeExtension<ProjectMembershipExtensions>()
+
+                .AddTypeExtension<TaskCommentQueries>()
+                .AddTypeExtension<TaskCommentMutations>()
+
 
             ;
 

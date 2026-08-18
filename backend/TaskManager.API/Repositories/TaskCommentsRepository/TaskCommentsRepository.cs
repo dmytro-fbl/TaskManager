@@ -187,7 +187,7 @@ namespace TaskManager.API.Repositories.TaskCommentsRepository
             try
             {
                 const string insertVersionSql = @"
-                    INSERT INTO app.task_comment_versions (comment_id, Previous_boy)
+                    INSERT INTO app.task_comment_versions (comment_id, previous_body)
                     SELECT id, body
                     FROM app.task_comments
                     WHERE id = @id;
