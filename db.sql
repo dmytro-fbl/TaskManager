@@ -654,3 +654,6 @@ ADD CONSTRAINT fk_task_comments_parent
     FOREIGN KEY (parent_comment_id)
     REFERENCES app.task_comments(id)
     ON DELETE CASCADE;
+
+ALTER TABLE app.task_comments 
+ADD COLUMN is_deleted boolean not null default false;
