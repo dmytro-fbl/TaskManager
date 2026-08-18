@@ -11,6 +11,8 @@ using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Services;
 using TaskManager.API.Repositories.TasksRepository;
 using TaskManager.API.GraphQL.Mutations.Tasks;
+using TaskManager.API.Repositories.CommentsRepository;
+using TaskManager.API.Repositories.TaskCommentsRepository;
 
 namespace TaskManager.API
 {
@@ -89,10 +91,13 @@ namespace TaskManager.API
                 });
 
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            //builder.Services.AddScoped<IUserRepository, UserRepository>();
+
             builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
-            builder.Services.AddScoped<IUserRepository, UserRepository>();
-            builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+            //builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+
             builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+            builder.Services.AddScoped<ITaskCommentsRepository, TaskCommentsRepository>();
             builder.Services.AddScoped<IUserServices, UserServices>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
