@@ -657,3 +657,8 @@ ADD CONSTRAINT fk_task_comments_parent
 
 ALTER TABLE app.task_comments 
 ADD COLUMN is_deleted boolean not null default false;
+
+ALTER TABLE app.task_assignments
+ADD COLUMN IF NOT EXISTS role_id UUID REFERENCES app.project_role_labels(id) ON DELETE SET NULL;
+
+ALTER TABLE app.tasks DROP COLUMN IF EXISTS role_id;
