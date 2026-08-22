@@ -18,23 +18,6 @@ export const GET_ADMIN_PROJECTS = gql`
   }
 `;
 
-// export const GET_PROJECT_MEMBERSHIPS = gql`
-//   query GetProjectMemberships($projectId: UUID!) {
-//     projectMemberships(projectId: $projectId) {
-//       id
-//       userId
-//       projectRole
-//       joinedAt
-//       user {
-//         id
-//         name
-//         email
-//         isActive
-//       }
-//     }
-//   }
-// `;
-
 export const GET_PROJECT_MEMBERSHIPS = gql`
   query GetProjectMemberships($projectId: UUID!) {
     projectMemberships(projectId: $projectId) {
@@ -83,21 +66,6 @@ export const GET_PROJECT_STATUSES = gql`
     }
 `;
 
-// const GET_PROJECT_MEMBERSHIPS = gql`
-//     query GetProjectTaskMembers($projectId: UUID!) {
-//         projectMemberships(projectId: $projectId) {
-//             id
-//             userId
-//             user {
-//                 id
-//                 name
-//                 email
-//                 isAdmin
-//             }
-//         }
-//     }
-// `;
-
 export const GET_PROJECT_ROLES = gql`
     query GetProjectRoles($projectId: UUID!) {
         projectRoles(projectId: $projectId) {
@@ -130,8 +98,7 @@ export const GET_PROJECT_DETAILS_FOR_TASK = gql`
             id
             projectId 
             authorId 
-            assigneeId 
-            roleId
+            assigneeIds 
             statusId 
             title 
             notes 
@@ -141,24 +108,23 @@ export const GET_PROJECT_DETAILS_FOR_TASK = gql`
             createdAt 
             updatedAt
         }
-        projectStatuses(projectId: $projectId) 
-        { 
-         id 
-         name 
-         category 
-         color 
+        projectStatuses(projectId: $projectId) { 
+            id 
+            name 
+            category 
+            color 
         }
         projectMemberships(projectId: $projectId) { 
-        userId
-         user {
-          id 
-          name 
-          email
+            userId
+            user {
+                id 
+                name 
+                email
             } 
         }
         projectRoles(projectId: $projectId){
-          id
-          name
+            id
+            name
         }
     }
 `;

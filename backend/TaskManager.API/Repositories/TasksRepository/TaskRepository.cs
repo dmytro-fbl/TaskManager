@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption.ConfigurationModel;
-using Npgsql;
+﻿using Npgsql;
 using TaskManager.API.DTOs.Tasks;
 using TaskManager.API.Models.TasksTables;
 
@@ -10,9 +9,10 @@ namespace TaskManager.API.Repositories.TasksRepository
         private readonly NpgsqlDataSource _dataSource;
 
         private const string TaskColumns = @"
-            id, role_id, project_id, author_id, assignee_id, status_id,
+            id, project_id, author_id, status_id,
             title, notes, priority, start_date, due_date,
-            created_at, updated_at, completed_at";
+            created_at, updated_at, completed_at,
+            COALESCE((SELECT array_agg(user_id) FROM app.task_assignments WHERE task_id = app.tasks.id), '{}') AS assignee_ids";
 
         public TaskRepository(NpgsqlDataSource dataSource)
         {
@@ -28,12 +28,12 @@ namespace TaskManager.API.Repositories.TasksRepository
 
             const string sql = @"
                 INSERT INTO app.tasks (
-                    id, role_id, project_id, author_id, assignee_id, status_id,
+                    id, project_id, author_id, status_id,
                     title, notes, priority, start_date, due_date,
                     created_at, updated_at, completed_at
                 )
                 VALUES (
-                    @id, @role_id, @project_id, @author_id, @assignee_id, @status_id,
+                    @id, @project_id, @author_id, @status_id,
                     @title, @notes, @priority, @start_date, @due_date,
                     @created_at, @updated_at, @completed_at
                 )
@@ -42,10 +42,8 @@ namespace TaskManager.API.Repositories.TasksRepository
             await using var command = new NpgsqlCommand(sql, connection);
 
             AddParameter(command, "id", taskId);
-            AddParameter(command, "role_id", task.RoleId);
             AddParameter(command, "project_id", task.ProjectId);
             AddParameter(command, "author_id", task.AuthorId);
-            AddParameter(command, "assignee_id", task.AssigneeId);
             AddParameter(command, "status_id", task.StatusId);
             AddParameter(command, "title", task.Title);
             AddParameter(command, "notes", task.Notes);
@@ -114,7 +112,7 @@ namespace TaskManager.API.Repositories.TasksRepository
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                SELECT id, task_id, user_id, estimated_hours, assigned_by, assigned_at
+                SELECT id, task_id, user_id, role_id, estimated_hours, assigned_by, assigned_at
                 FROM app.task_assignments
                 WHERE task_id = @task_id
                 ORDER BY assigned_at;";
@@ -131,13 +129,10 @@ namespace TaskManager.API.Repositories.TasksRepository
                     Id = reader.GetGuid(reader.GetOrdinal("id")),
                     TaskId = reader.GetGuid(reader.GetOrdinal("task_id")),
                     UserId = reader.GetGuid(reader.GetOrdinal("user_id")),
-                    EstimatedHours = reader.GetDecimal(
-                        reader.GetOrdinal("estimated_hours")
-                    ),
+                    RoleId = reader.IsDBNull(reader.GetOrdinal("role_id")) ? null : reader.GetGuid(reader.GetOrdinal("role_id")),
+                    EstimatedHours = reader.GetDecimal(reader.GetOrdinal("estimated_hours")),
                     AssignedBy = reader.GetGuid(reader.GetOrdinal("assigned_by")),
-                    AssignedAt = reader.GetFieldValue<DateTimeOffset>(
-                        reader.GetOrdinal("assigned_at")
-                    )
+                    AssignedAt = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("assigned_at"))
                 });
             }
 
@@ -147,84 +142,30 @@ namespace TaskManager.API.Repositories.TasksRepository
         public async Task<bool> AddTaskAssignmentAsync(TaskAssignment assignment)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
-            await using var transaction = await connection.BeginTransactionAsync();
 
             const string insertSql = @"
             INSERT INTO app.task_assignments
-                (id, task_id, user_id, estimated_hours, assigned_by, assigned_at)
+                (id, task_id, user_id, role_id, estimated_hours, assigned_by, assigned_at)
             VALUES
-                (@id, @task_id, @user_id, @estimated_hours, @assigned_by, @assigned_at)
-            ON CONFLICT (task_id, user_id) DO NOTHING;";
+                (@id, @task_id, @user_id, @role_id, @estimated_hours, @assigned_by, @assigned_at)
+            ON CONFLICT (task_id, user_id) DO UPDATE 
+            SET role_id = EXCLUDED.role_id,
+                estimated_hours = EXCLUDED.estimated_hours;";
 
-            await using var insertCommand = new NpgsqlCommand(
-                insertSql,
-                connection,
-                transaction
-            );
+            await using var insertCommand = new NpgsqlCommand(insertSql, connection);
 
-            AddParameter(
-                insertCommand,
-                "id",
-                assignment.Id == Guid.Empty
-                    ? Guid.NewGuid()
-                    : assignment.Id
-            );
-
+            AddParameter(insertCommand, "id", assignment.Id == Guid.Empty ? Guid.NewGuid() : assignment.Id);
             AddParameter(insertCommand, "task_id", assignment.TaskId);
             AddParameter(insertCommand, "user_id", assignment.UserId);
-            AddParameter(
-                insertCommand,
-                "estimated_hours",
-                assignment.EstimatedHours
-            );
-            AddParameter(
-                insertCommand,
-                "assigned_by",
-                assignment.AssignedBy
-            );
-            AddParameter(
-                insertCommand,
-                "assigned_at",
-                assignment.AssignedAt
-            );
+            AddParameter(insertCommand, "role_id", assignment.RoleId);
+            AddParameter(insertCommand, "estimated_hours", assignment.EstimatedHours);
+            AddParameter(insertCommand, "assigned_by", assignment.AssignedBy);
+            AddParameter(insertCommand, "assigned_at", assignment.AssignedAt);
 
-            var inserted = await insertCommand.ExecuteNonQueryAsync() > 0;
-
-            if (!inserted)
-            {
-                await transaction.RollbackAsync();
-                return false;
-            }
-
-            const string updateTaskSql = @"
-                UPDATE app.tasks
-                SET assignee_id = @user_id,
-                    updated_at = @updated_at
-                WHERE id = @task_id;";
-
-            await using var updateTaskCommand = new NpgsqlCommand(
-                updateTaskSql,
-                connection,
-                transaction
-            );
-
-            AddParameter(updateTaskCommand, "task_id", assignment.TaskId);
-            AddParameter(updateTaskCommand, "user_id", assignment.UserId);
-            AddParameter(
-                updateTaskCommand,
-                "updated_at",
-                DateTimeOffset.UtcNow
-            );
-
-            await updateTaskCommand.ExecuteNonQueryAsync();
-            await transaction.CommitAsync();
-
-            return true;
+            return await insertCommand.ExecuteNonQueryAsync() > 0;
         }
 
-        public async Task<bool> RemoveTaskAssignmentAsync(
-            Guid taskId,
-            Guid userId)
+        public async Task<bool> RemoveTaskAssignmentAsync(Guid taskId, Guid userId)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
@@ -241,16 +182,11 @@ namespace TaskManager.API.Repositories.TasksRepository
             return await command.ExecuteNonQueryAsync() > 0;
         }
 
-        private static void AddParameter(
-            NpgsqlCommand command,
-            string name,
-            object? value)
+        private static void AddParameter(NpgsqlCommand command, string name, object? value)
         {
-            command.Parameters.AddWithValue(
-                name,
-                value ?? DBNull.Value
-            );
+            command.Parameters.AddWithValue(name, value ?? DBNull.Value);
         }
+
         public async Task<bool> UpdateTaskStatusAsync(Guid taskId, Guid statusId)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
@@ -269,6 +205,7 @@ namespace TaskManager.API.Repositories.TasksRepository
 
             return await command.ExecuteNonQueryAsync() > 0;
         }
+
         public async Task<bool> IsProjectStatusAsync(Guid projectId, Guid statusId)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
@@ -288,10 +225,10 @@ namespace TaskManager.API.Repositories.TasksRepository
 
             return (bool)(await command.ExecuteScalarAsync() ?? false);
         }
+
         private static TaskItem MapTask(NpgsqlDataReader reader)
         {
-            var roleIdOrdinal = reader.GetOrdinal("role_id");
-            var assigneeIdOrdinal = reader.GetOrdinal("assignee_id");
+            var assigneeIdsOrdinal = reader.GetOrdinal("assignee_ids");
             var notesOrdinal = reader.GetOrdinal("notes");
             var startDateOrdinal = reader.GetOrdinal("start_date");
             var dueDateOrdinal = reader.GetOrdinal("due_date");
@@ -300,46 +237,18 @@ namespace TaskManager.API.Repositories.TasksRepository
             return new TaskItem
             {
                 Id = reader.GetGuid(reader.GetOrdinal("id")),
-                RoleId = reader.IsDBNull(roleIdOrdinal)
-            ? null
-            : reader.GetGuid(roleIdOrdinal),
                 ProjectId = reader.GetGuid(reader.GetOrdinal("project_id")),
                 AuthorId = reader.GetGuid(reader.GetOrdinal("author_id")),
-
-                AssigneeId = reader.IsDBNull(assigneeIdOrdinal)
-                    ? null
-                    : reader.GetGuid(assigneeIdOrdinal),
-
+                AssigneeIds = reader.IsDBNull(assigneeIdsOrdinal) ? new List<Guid>() : reader.GetFieldValue<Guid[]>(assigneeIdsOrdinal).ToList(),
                 StatusId = reader.GetGuid(reader.GetOrdinal("status_id")),
                 Title = reader.GetString(reader.GetOrdinal("title")),
-
-                Notes = reader.IsDBNull(notesOrdinal)
-                    ? null
-                    : reader.GetString(notesOrdinal),
-
+                Notes = reader.IsDBNull(notesOrdinal) ? null : reader.GetString(notesOrdinal),
                 Priority = reader.GetString(reader.GetOrdinal("priority")),
-
-                StartDate = reader.IsDBNull(startDateOrdinal)
-                    ? null
-                    : reader.GetDateTime(startDateOrdinal),
-
-                DueDate = reader.IsDBNull(dueDateOrdinal)
-                    ? null
-                    : reader.GetDateTime(dueDateOrdinal),
-
-                CreatedAt = reader.GetFieldValue<DateTimeOffset>(
-                    reader.GetOrdinal("created_at")
-                ),
-
-                UpdatedAt = reader.GetFieldValue<DateTimeOffset>(
-                    reader.GetOrdinal("updated_at")
-                ),
-
-                CompletedAt = reader.IsDBNull(completedAtOrdinal)
-                    ? null
-                    : reader.GetFieldValue<DateTimeOffset>(
-                        completedAtOrdinal
-                    )
+                StartDate = reader.IsDBNull(startDateOrdinal) ? null : reader.GetDateTime(startDateOrdinal),
+                DueDate = reader.IsDBNull(dueDateOrdinal) ? null : reader.GetDateTime(dueDateOrdinal),
+                CreatedAt = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("created_at")),
+                UpdatedAt = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("updated_at")),
+                CompletedAt = reader.IsDBNull(completedAtOrdinal) ? null : reader.GetFieldValue<DateTimeOffset>(completedAtOrdinal)
             };
         }
 
@@ -350,9 +259,10 @@ namespace TaskManager.API.Repositories.TasksRepository
             const string sql = @"
                 SELECT exists(
                     SELECT 1
-                    FROM app.tasks
-                    WHERE project_id = @project_id
-                            AND (assignee_id = @user_id OR author_id = @user_id)
+                    FROM app.tasks t
+                    LEFT JOIN app.task_assignments ta ON t.id = ta.task_id
+                    WHERE t.project_id = @project_id
+                      AND (t.author_id = @user_id OR ta.user_id = @user_id)
                 );
             ";
 
@@ -394,8 +304,6 @@ namespace TaskManager.API.Repositories.TasksRepository
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
-            Guid workLogId = Guid.NewGuid();
-
             const string sql = @"
                 INSERT INTO app.worklogs (task_id, user_id, hours_spent, log_date, description, created_at)
                 VALUES (@task_id, @user_id, @hours_spent, @log_date, @description, @created_at);
@@ -410,9 +318,7 @@ namespace TaskManager.API.Repositories.TasksRepository
             AddParameter(command, "description", string.IsNullOrWhiteSpace(input.Comment) ? null : input.Comment.Trim());
             AddParameter(command, "created_at", DateTimeOffset.UtcNow);
 
-            var result = await command.ExecuteNonQueryAsync();
-
-            return result > 0;
+            return await command.ExecuteNonQueryAsync() > 0;
         }
 
         public async Task<IEnumerable<WorkLogDTO>> GetTaskWorkLogsAsync(Guid taskId)
@@ -423,19 +329,20 @@ namespace TaskManager.API.Repositories.TasksRepository
 
             const string sql = @"
             SELECT
-    w.id AS work_id,
-    w.task_id,
-    u.id AS user_id,
-    u.name AS user_name,
-    prl.name AS role_name,
-    w.hours_spent,
-    w.log_date,
-    w.description
-    FROM app.worklogs w
-    JOIN app.users u ON w.user_id = u.id
-    LEFT JOIN app.project_role_labels prl ON w.role_label_id = prl.id 
-    WHERE w.task_id = @task_id
-    ORDER BY w.log_date DESC;                
+                w.id AS work_id,
+                w.task_id,
+                u.id AS user_id,
+                u.name AS user_name,
+                prl.name AS role_name,
+                w.hours_spent,
+                w.log_date,
+                w.description
+            FROM app.worklogs w
+            JOIN app.users u ON w.user_id = u.id
+            LEFT JOIN app.task_assignments ta ON ta.task_id = w.task_id AND ta.user_id = w.user_id
+            LEFT JOIN app.project_role_labels prl ON ta.role_id = prl.id 
+            WHERE w.task_id = @task_id
+            ORDER BY w.log_date DESC;
             ";
 
             await using var command = new NpgsqlCommand(sql, connection);
@@ -485,7 +392,6 @@ namespace TaskManager.API.Repositories.TasksRepository
 
                 return rowsAffected > 0;
             }
-
         }
 
         public async Task<bool> HasWorkLogsAsync(Guid taskId)
