@@ -98,7 +98,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 ProjectId = input.ProjectId,
                 AuthorId = userId,
                 StatusId = input.StatusId,
-                RoleId = input.RoleId,
+                //RoleId = input.RoleId,
                 Title = input.Title.Trim(),
                 Notes = input.Notes?.Trim(),
                 Priority = priority,

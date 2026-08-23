@@ -3,13 +3,11 @@
     public class TaskItem
     {
         public Guid Id { get; set; }
-        public Guid? RoleId { get; set; }
         public Guid ProjectId { get; set; }
 
         public Guid AuthorId { get; set; }
 
-        public Guid? AssigneeId { get; set; }
-
+        public List<Guid> AssigneeIds { get; set; } = new();
         public Guid StatusId { get; set; }
 
         public string Title { get; set; } = string.Empty;

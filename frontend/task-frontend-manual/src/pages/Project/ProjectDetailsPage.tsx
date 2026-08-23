@@ -130,7 +130,7 @@ export const ProjectDetailsPage: React.FC = () => {
                 <div className="flex flex-col sm:flex-row sm:gap-8 text-sm text-text-main font-medium border-t pt-4 border-gray-100">
                     <div>
                         <span className="text-text-muted mr-1">Бюджетний ліміт:</span>
-                        {project.budgetCap != null ? `$${project.budgetCap}` : "Не обмежено"}
+                        {project.budgetCap != null ? `Кількість годин: ${project.budgetCap}` : "Не обмежено"}
                     </div>
                     <div>
                         <span className="text-text-muted mr-1">Дедлайн:</span>
@@ -158,7 +158,6 @@ export const ProjectDetailsPage: React.FC = () => {
                 <ProjectMembersTable
                     projectId={id}
                     ref={tableRef}
-                    // isArchived={project.isArchived}
                 />
             </div>
 

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useMutation } from "@apollo/client/react";
+import {useQuery, useMutation} from "@apollo/client/react"
 import {
     FiArrowLeft,
     FiClock,
@@ -10,22 +10,21 @@ import {
     FiActivity,
     FiFlag,
     FiSave,
-    FiList,
-    FiBriefcase
+    FiList
 } from "react-icons/fi";
 import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
 import { GET_PROJECT_DETAILS_FOR_TASK } from "../../graphql/queries/project/projectQuery";
-import { GET_TASK_WORKLOGS, LOG_WORK } from "../../graphql/queries/task/taskQueries";
+import { GET_TASK_WORKLOGS, LOG_WORK, GET_TASK_ASSIGNMENTS } from "../../graphql/queries/task/taskQueries";
 
 import { TaskCommentsSection } from "./TaskComment/TaskCommentsSection";
+
 
 type Task = {
     id: string;
     projectId: string;
     authorId: string;
-    assigneeId?: string | null;
-    roleId?: string | null;
+    assigneeIds: string[];
     statusId: string;
     title: string;
     notes?: string | null;
@@ -35,7 +34,15 @@ type Task = {
 
 type ProjectStatus = { id: string; name: string; };
 type ProjectRole = { id: string; name: string; };
-type Membership = { userId: string; user: { name: string; }; };
+type Membership = { userId: string; user: { id: string; name: string; email: string; }; };
+
+type TaskAssignment = {
+    id: string;
+    userId: string;
+    roleId?: string | null;
+    estimatedHours: number;
+};
+
 type Worklog = {
     id: string;
     userName: string;
@@ -51,9 +58,11 @@ type ProjectDetailsResponse = {
     projectRoles: ProjectRole[];
 };
 
+
 type WorklogsResponse = {
     taskWorklogs: Worklog[];
 };
+type AssignmentsResponse = { taskAssignments: TaskAssignment[]; };
 
 export const TaskDetailsPage: React.FC = () => {
     const { projectId, taskId } = useParams();
@@ -69,6 +78,12 @@ export const TaskDetailsPage: React.FC = () => {
     });
 
     const worklogsQuery = useQuery<WorklogsResponse>(GET_TASK_WORKLOGS, {
+        variables: { taskId },
+        skip: !taskId,
+        fetchPolicy: "network-only",
+    });
+
+    const assignmentsQuery = useQuery<AssignmentsResponse>(GET_TASK_ASSIGNMENTS, {
         variables: { taskId },
         skip: !taskId,
         fetchPolicy: "network-only",
@@ -90,8 +105,12 @@ export const TaskDetailsPage: React.FC = () => {
     }
 
     const status = projectQuery.data?.projectStatuses?.find((s) => s.id === task.statusId);
-    const assignee = projectQuery.data?.projectMemberships?.find((m) => m.userId === task.assigneeId)?.user;
-    const role = projectQuery.data?.projectRoles?.find((r) => r.id === task.roleId);
+    const roles = projectQuery.data?.projectRoles ?? [];
+    const assignments = assignmentsQuery.data?.taskAssignments ?? [];
+    
+    const assignees = projectQuery.data?.projectMemberships
+        ?.filter((m) => task.assigneeIds?.includes(m.userId))
+        .map((m) => m.user) ?? [];
 
     const worklogs = worklogsQuery.data?.taskWorklogs ?? [];
     const totalHoursLogged = worklogs.reduce((sum, item) => sum + Number(item.hoursSpent || 0), 0);
@@ -156,7 +175,9 @@ export const TaskDetailsPage: React.FC = () => {
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
+                {/* ЛІВА ОСНОВНА КОЛОНКА */}
                 <div className="space-y-6 md:col-span-2">
+                    {/* 1. Опис завдання */}
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <h3 className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-500 uppercase tracking-wider">
                             <FiAlignLeft size={16} /> Опис завдання
@@ -166,6 +187,7 @@ export const TaskDetailsPage: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* 2. Трекінг часу */}
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="flex items-center gap-2 text-lg font-bold text-[#1f2937]">
@@ -223,12 +245,14 @@ export const TaskDetailsPage: React.FC = () => {
                         </div>
                     </div>
 
+                    {/* БЛОК КОМЕНТАРІВ */}
                     <TaskCommentsSection 
-                    taskId={task.id}
-                    memberships={projectQuery.data?.projectMemberships ?? []} />
+                        taskId={task.id} 
+                        memberships={projectQuery.data?.projectMemberships ?? []} 
+                    />
                 </div>
 
-                {/* ПРАВА БІЧНА КОЛОНКА (Інформація) */}
+                {/* ПРАВА БІЧНА КОЛОНКА */}
                 <div className="space-y-4 rounded-2xl bg-white p-6 border border-gray-100 shadow-sm h-fit">
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
@@ -238,21 +262,39 @@ export const TaskDetailsPage: React.FC = () => {
                     </div>
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
-                            <FiUser size={12} /> Виконавець
+                            <FiUser size={12} /> Виконавці
                         </span>
-                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{assignee?.name ?? "Не призначено"}</span>
+                        <div className="text-sm font-semibold text-[#1f2937] pl-5 space-y-2 mt-2">
+                            {assignees.length > 0 ? (
+                                assignees.map((a) => {
+                                    const assignment = assignments.find(assign => assign.userId === a.id);
+                                    const role = roles.find(r => r.id === assignment?.roleId);
+
+                                    return (
+                                        <div key={a.id} className="flex items-center gap-2">
+                                            <span>{a.name}</span>
+                                            {role ? (
+                                                <span className="px-2 py-0.5 text-[12px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                                    {role.name}
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-gray-50 text-gray-500 border border-gray-200">
+                                                    Без ролі
+                                                </span>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                "Не призначено"
+                            )}
+                        </div>
                     </div>
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
                             <FiCalendar size={12} /> Дедлайн
                         </span>
                         <span className="text-sm font-semibold text-[#1f2937] pl-5">{formatDate(task.dueDate)}</span>
-                    </div>
-                    <div>
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
-                            <FiBriefcase size={12} /> Роль
-                        </span>
-                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{role?.name ?? "Не вказано"}</span>
                     </div>
                 </div>
             </div>

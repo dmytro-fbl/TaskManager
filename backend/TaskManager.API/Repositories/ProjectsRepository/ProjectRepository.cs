@@ -711,38 +711,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
         }
 
-        public async Task AddDefaultProjectRolesAsync(Guid projectId)
-        {
-            await using var connection = await _dataSource.OpenConnectionAsync();
-
-            var defaultRoles = new[]
-            {
-                new { Name = "Backend Developer" },
-                new { Name = "Frontend Developer" },
-                new { Name = "UI/UX Designer" },
-                new { Name = "QA Engineer" },
-                new { Name = "Project Manager" }
-            };
-
-            foreach (var role in defaultRoles)
-            {
-                var roleId = Guid.NewGuid();
-
-                const string insertLabelSql = @"
-                    INSERT INTO  app.project_role_labels (id, project_id, name)
-                    VALUES (@id, @project_id, @name);
-                ";
-                await using var labelCmd = new NpgsqlCommand(insertLabelSql, connection);
-
-                labelCmd.Parameters.AddWithValue("id", roleId);
-                labelCmd.Parameters.AddWithValue("project_id", projectId);
-                labelCmd.Parameters.AddWithValue("name", role.Name);
-
-                await labelCmd.ExecuteNonQueryAsync();
-
-            }
-
-        }
 
         public async Task<IEnumerable<ProjectRoleDTO>> GetProjectRolesAsync(Guid projectId)
         {

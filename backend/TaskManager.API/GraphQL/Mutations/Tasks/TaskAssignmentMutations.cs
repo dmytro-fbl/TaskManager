@@ -14,6 +14,7 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             Guid taskId,
             Guid userId,
             decimal estimatedHours,
+            Guid? roleId,
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IProjectRepository projectRepository,
@@ -82,10 +83,17 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
                 );
             }
 
+            if (roleId.HasValue)
+            {
+                var isValidRole = await taskRepository.IsRoleInProjectAsync(task.ProjectId, roleId.Value);
+                if (!isValidRole) throw new GraphQLException("Вказана роль не належить цьому проєкту.");
+            }
+
             var assignment = new Models.TasksTables.TaskAssignment
             {
                 TaskId = taskId,
                 UserId = userId,
+                RoleId = roleId,
                 EstimatedHours = estimatedHours,
                 AssignedBy = currentUserId,
                 AssignedAt = DateTimeOffset.UtcNow

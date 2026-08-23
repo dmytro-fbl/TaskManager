@@ -33,3 +33,14 @@ export const LOG_WORK = gql`
     }
 `;
 
+export const GET_TASK_ASSIGNMENTS = gql`
+    query GetTaskAssignments($taskId: UUID!) {
+        taskAssignments(taskId: $taskId) {
+            id
+            userId
+            roleId
+            estimatedHours
+        }
+    }
+`;
+

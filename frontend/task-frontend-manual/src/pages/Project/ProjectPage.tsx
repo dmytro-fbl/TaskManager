@@ -120,7 +120,7 @@ export const ProjectsPage: React.FC = () => {
 
                                 <div className="flex items-center justify-between text-sm text-gray-500 border-t pt-4 border-gray-50">
                                     <span>
-                                        Бюджет: {project.budgetCap != null ? `$${project.budgetCap}` : "Не вказано"}
+                                        Бюджет: {project.budgetCap != null ? `${project.budgetCap} годин` : "Не вказано"}
                                     </span>
                                     <span className="font-medium text-blue-600 hover:text-blue-800">
                                         Відкрити &rarr;
