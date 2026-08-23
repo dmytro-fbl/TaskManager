@@ -230,7 +230,7 @@ export const ProjectDetailsPage: React.FC = () => {
                                         Бюджетний ліміт
                                     </label>
                                     <div className="text-base font-semibold text-text-main">
-                                        {project.budgetCap != null ? `$${project.budgetCap}` : "Не обмежено"}
+                                        {project.budgetCap != null ? `Кількість годин: ${project.budgetCap}` : "Не обмежено"}
                                     </div>
                                 </div>
 
