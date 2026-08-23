@@ -51,8 +51,6 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             var createdProject = await projectRepository.GetProjectByIdAsync(createdProjectId);
 
-            await projectRepository.AddDefaultProjectRolesAsync(createdProjectId);
-
             return createdProject
                 ?? throw new GraphQLException("Помилка під час зчитування створеного проекту.");
         }
