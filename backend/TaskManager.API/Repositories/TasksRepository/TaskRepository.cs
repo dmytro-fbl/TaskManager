@@ -430,5 +430,23 @@ namespace TaskManager.API.Repositories.TasksRepository
 
             return (bool)(await command.ExecuteScalarAsync() ?? false);
         }
+
+        public async Task AddProjectHoursAsync(Guid projectId, Guid userId, decimal hours, string? roleLabelName = null)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+        INSERT INTO app.project_hours (project_id, user_id, hours, role_label_name, created_at)
+        VALUES (@project_id, @user_id, @hours, @role_label_name, now());
+    ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("project_id", projectId);
+            command.Parameters.AddWithValue("user_id", userId);
+            command.Parameters.AddWithValue("hours", hours);
+            command.Parameters.AddWithValue("role_label_name", (object?)roleLabelName ?? DBNull.Value);
+
+            await command.ExecuteNonQueryAsync();
+        }
     }
 }

@@ -1,25 +1,18 @@
 import { useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { gql } from "@apollo/client";
-import { ADD_PROJECT_HOURS } from "../../graphql/mutations/projectMutation";
+import { ADD_PROJECT_HOURS } from "../../graphql/mutations/project/projectMutation";
 
 type AddProjectHoursFormProps = {
     projectId: string;
     onAdded?: () => void;
 };
 
-const ADD_PROJECT_HOURS_MUTATION = gql`
-  mutation AddProjectHours($input: AddProjectHoursInput!) {
-    addProjectHours(input: $input)
-  }
-`;
-
 export function AddProjectHoursForm({ projectId, onAdded }: AddProjectHoursFormProps) {
     const [hours, setHours] = useState("");
     const [description, setDescription] = useState("");
     const [error, setError] = useState("");
 
-    const [addProjectHours, { loading }] = useMutation(ADD_PROJECT_HOURS_MUTATION);
+    const [addProjectHours, { loading }] = useMutation(ADD_PROJECT_HOURS);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

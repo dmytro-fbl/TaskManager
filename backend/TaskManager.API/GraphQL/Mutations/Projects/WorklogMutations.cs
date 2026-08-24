@@ -1,6 +1,7 @@
-﻿using System.Security.Claims;
-using HotChocolate.Authorization;
+﻿using HotChocolate.Authorization;
+using System.Security.Claims;
 using TaskManager.API.DTOs.Worklog;
+using TaskManager.API.Models.ProjectsTables;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Repositories.TasksRepository;
@@ -12,11 +13,11 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
     {
         [Authorize]
         public async Task<bool> AddProjectHoursAsync(
-            AddProjectHoursInput input,
-            ClaimsPrincipal claimsPrincipal,
-            [Service] ITaskRepository taskRepository,
-            [Service] IProjectRepository projectRepository,
-            [Service] IUserRepository userRepository)
+    AddProjectHoursInput input,
+    ClaimsPrincipal claimsPrincipal,
+    [Service] ITaskRepository taskRepository,
+    [Service] IProjectRepository projectRepository,
+    [Service] IUserRepository userRepository)
         {
             var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
                                ?? claimsPrincipal.FindFirst("sub")?.Value;
@@ -45,7 +46,12 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 throw new GraphQLException("Години мають бути більше 0.");
             }
 
-            return await taskRepository.AddProjectHoursAsync(input.ProjectId, userId, input.Hours, input.Description);
+            await taskRepository.AddProjectHoursAsync(
+                input.ProjectId,
+                userId,
+                input.Hours);
+
+            return true;
         }
     }
 }
