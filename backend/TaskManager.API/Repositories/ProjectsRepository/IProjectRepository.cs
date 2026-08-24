@@ -1,4 +1,5 @@
 ﻿using TaskManager.API.DTOs;
+using TaskManager.API.DTOs.Dashboard;
 using TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
 
@@ -10,6 +11,11 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         Task<Project?> GetProjectByIdAsync(Guid projectId);
         Task<IEnumerable<Project>> GetUserProjectsAsync(Guid userId);
         Task<IEnumerable<User>> GetProjectMembersAsync(Guid projectId);
+        //Dashboard
+        Task<IEnumerable<MyProjectDashboardDto>> GetMyProjectsWithHoursAsync(Guid userId);
+        Task<IEnumerable<AvailableProjectDto>> GetAvailableProjectsAsync(Guid userId);
+        Task<IEnumerable<ManagerProjectDashboardDto>> GetManagerProjectsWithRoleHoursAsync(Guid userId);
+        Task<DashboardStatsDto> GetDashboardStatsAsync(Guid userId);
         Task<bool> InviteUserToProjectAsync(Guid projectId, string email, string projectRole);
         Task<bool> IsUserInProjectAsync(Guid projectId, Guid userId);
         Task<IEnumerable<ProjectMembership>> GetProjectMembershipsAsync(Guid projectId);
