@@ -51,6 +51,7 @@ namespace TaskManager.API
                 .AddTypeExtension<ProjectRoleMutations>()
                 .AddTypeExtension<ProjectMembershipExtensions>()
 
+                .AddTypeExtension<WorklogMutations>()
             ;
 
 

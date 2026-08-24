@@ -350,5 +350,46 @@ namespace TaskManager.API.Repositories.TasksRepository
                     )
             };
         }
+
+        public async Task<bool> AddProjectHoursAsync(Guid projectId, Guid userId, decimal hours, string? description = null)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string getTaskSql = @"
+                SELECT id FROM app.tasks
+                WHERE project_id = @project_id
+                ORDER BY created_at
+                LIMIT 1;
+            ";
+
+            await using var getTaskCmd = new NpgsqlCommand(getTaskSql, connection);
+            getTaskCmd.Parameters.AddWithValue("project_id", projectId);
+
+            var taskIdObj = await getTaskCmd.ExecuteScalarAsync();
+            if (taskIdObj == null)
+            {
+                throw new GraphQLException("У цього проєкту немає задач. Створіть хоча б одну задачу.");
+            }
+
+            var taskId = (Guid)taskIdObj;
+
+            const string sql = @"
+                INSERT INTO app.worklogs (
+                    id, task_id, user_id, role_label_id, hours_spent, log_date, description, created_at
+                )
+                VALUES (
+                    gen_random_uuid(), @task_id, @user_id, NULL, @hours, current_date, @description, now()
+                );
+            ";
+
+            await using var cmd = new NpgsqlCommand(sql, connection);
+            cmd.Parameters.AddWithValue("task_id", taskId);
+            cmd.Parameters.AddWithValue("user_id", userId);
+            cmd.Parameters.AddWithValue("hours", hours);
+            cmd.Parameters.AddWithValue("description", (object?)description ?? DBNull.Value);
+
+            var rows = await cmd.ExecuteNonQueryAsync();
+            return rows > 0;
+        }
     }
 }
