@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { useQuery } from "@apollo/client/react";
+import { useQuery, useMutation } from "@apollo/client/react";
 import { gql } from "@apollo/client";
-import { useNavigate } from "react-router-dom"; // ДОДАНО ІМПОРТ
+import { useNavigate } from "react-router-dom";
 import { CreateProjectForm } from "./CreateProjectForm";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
+import { AddProjectHoursForm } from "../../../components/Dashboard/AddProjectHoursForm";
 
 interface Project {
     id: string;
@@ -45,21 +46,19 @@ export const ProjectsPage: React.FC = () => {
 
     const getStatusBadge = (status: string) => {
         switch (status.toLowerCase()) {
-            case 'active':
-                return { color: 'bg-green-100 text-green-700', label: 'Активний' };
-            case 'completed':
-                return { color: 'bg-blue-100 text-blue-700', label: 'Виконано' };
-            case 'archived':
-            case 'on_hold':
-                return { color: 'bg-gray-100 text-gray-700', label: 'В архіві' };
+            case "active":
+                return { color: "bg-green-100 text-green-700", label: "Активний" };
+            case "completed":
+                return { color: "bg-blue-100 text-blue-700", label: "Виконано" };
+            case "archived":
+            case "on_hold":
+                return { color: "bg-gray-100 text-gray-700", label: "В архіві" };
             default:
-                return { color: 'bg-gray-100 text-gray-700', label: status };
-                
-            }
-        };
-        
-        const projects = data?.myProjects ?? [];
-        
+                return { color: "bg-gray-100 text-gray-700", label: status };
+        }
+    };
+
+    const projects = data?.myProjects ?? [];
 
     return (
         <div className="container px-4 py-8 mx-auto max-w-7xl">
@@ -67,10 +66,11 @@ export const ProjectsPage: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-900">Мої проєкти</h1>
                 <button
                     onClick={() => setShowCreateForm(!showCreateForm)}
-                    className={`px-4 py-2 text-white transition-colors rounded-lg ${showCreateForm
+                    className={`px-4 py-2 text-white transition-colors rounded-lg ${
+                        showCreateForm
                             ? "bg-gray-500 hover:bg-gray-600"
                             : "bg-blue-600 hover:bg-blue-700"
-                        }`}
+                    }`}
                 >
                     {showCreateForm ? "Скасувати" : "+ Створити проєкт"}
                 </button>
@@ -78,10 +78,12 @@ export const ProjectsPage: React.FC = () => {
 
             {showCreateForm && (
                 <div className="mb-10">
-                    <CreateProjectForm onCreated={async () => {
-                        await refetch();
-                        setShowCreateForm(false);
-                    }} />
+                    <CreateProjectForm
+                        onCreated={async () => {
+                            await refetch();
+                            setShowCreateForm(false);
+                        }}
+                    />
                 </div>
             )}
 
@@ -95,7 +97,9 @@ export const ProjectsPage: React.FC = () => {
 
             {error && (
                 <div className="mb-6">
-                    <ErrorMessage message={getFriendlyErrorMessage(error as any) ?? "Помилка завантаження проєктів"} />
+                    <ErrorMessage
+                        message={getFriendlyErrorMessage(error as any) ?? "Помилка завантаження проєктів"}
+                    />
                 </div>
             )}
 
@@ -113,30 +117,48 @@ export const ProjectsPage: React.FC = () => {
                         return (
                             <div
                                 key={project.id}
-                                onClick={() => navigate(`/projects/${project.id}`)}
-                                className="p-6 transition-shadow bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md cursor-pointer"
+                                className="p-6 transition-shadow bg-white border border-gray-100 shadow-sm rounded-xl hover:shadow-md"
                             >
-                                <div className="flex items-start justify-between mb-4">
-                                    <h3 className="text-xl font-semibold text-gray-800">{project.title}</h3>
-                                    
-                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}>
-                                        {badge.label}
-                                    </span>
+                                <div
+                                    onClick={() => navigate(`/projects/${project.id}`)}
+                                    className="cursor-pointer"
+                                >
+                                    <div className="flex items-start justify-between mb-4">
+                                        <h3 className="text-xl font-semibold text-gray-800">{project.title}</h3>
+
+                                        <span
+                                            className={`px-2 py-1 text-xs font-medium rounded-full ${badge.color}`}
+                                        >
+                      {badge.label}
+                    </span>
+                                    </div>
+
+                                    <p className="mb-4 text-sm text-gray-600 line-clamp-2">
+                                        {project.description?.trim()
+                                            ? project.description
+                                            : "Опис проєкту відсутній."}
+                                    </p>
+
+                                    <div className="flex items-center justify-between text-sm text-gray-500 border-t pt-4 border-gray-50">
+                    <span>
+                      Бюджет:{" "}
+                        {project.budgetCap != null
+                            ? `${project.budgetCap} год`
+                            : "Не вказано"}
+                    </span>
+                                        <span className="font-medium text-blue-600 hover:text-blue-800">
+                      Відкрити →
+                    </span>
+                                    </div>
                                 </div>
 
-                                <p className="mb-4 text-sm text-gray-600 line-clamp-2">
-                                    {project.description?.trim()
-                                        ? project.description
-                                        : "Опис проєкту відсутній."}
-                                </p>
-
-                                <div className="flex items-center justify-between text-sm text-gray-500 border-t pt-4 border-gray-50">
-                                    <span>
-                                        Бюджет: {project.budgetCap != null ? `$${project.budgetCap}` : "Не вказано"}
-                                    </span>
-                                    <span className="font-medium text-blue-600 hover:text-blue-800">
-                                        Відкрити &rarr;
-                                    </span>
+                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                    <AddProjectHoursForm
+                                        projectId={project.id}
+                                        onAdded={async () => {
+                                            await refetch();
+                                        }}
+                                    />
                                 </div>
                             </div>
                         );

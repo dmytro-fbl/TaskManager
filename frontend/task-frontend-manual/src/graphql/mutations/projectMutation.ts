@@ -39,3 +39,9 @@ export const REMOVE_PROJECT_MEMBER = gql`
     removeProjectMember(projectId: $projectId, userId: $userId)
   }
 `;
+
+export const ADD_PROJECT_HOURS = gql`
+  mutation AddProjectHours($input: AddProjectHoursInput!) {
+    addProjectHours(input: $input)
+  }
+`;
