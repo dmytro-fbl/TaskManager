@@ -1,10 +1,14 @@
-import React, { forwardRef, useImperativeHandle } from "react";
+import React, { forwardRef, useImperativeHandle, useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
 import { gql } from "@apollo/client";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
-import { UPDATE_PROJECT_MEMBER_ROLE } from "../../../graphql/mutations/projectRoleMutations";
-import { REMOVE_PROJECT_MEMBER } from "../../../graphql/mutations/projectMutation";
+
+import { UPDATE_PROJECT_MEMBER_ROLE } from "../../../graphql/mutations/project/projectRoleMutations";
+import { REMOVE_PROJECT_MEMBER } from "../../../graphql/mutations/project/projectMutation";
+
+import { GET_ME_QUERY } from "../../../graphql/queries/autorization/autorizationQueries";
+import { GET_PROJECT_MEMBERSHIPS } from "../../../graphql/queries/project/projectQuery";
 
 interface ProjectMembership {
     id: string;
@@ -29,41 +33,17 @@ interface GetMeData {
     } | null;
 }
 
-const GET_ME_QUERY = gql`
-  query GetMe {
-    me {
-      id
-      name
-      isAdmin
-    }
-  }
-`;
 
-const GET_PROJECT_MEMBERSHIPS = gql`
-  query GetProjectMemberships($projectId: UUID!) {
-    projectMemberships(projectId: $projectId) {
-      id
-      projectId
-      userId
-      projectRole
-      roleLabelId
-      joinedAt
-      user {
-        id
-        name
-        email
-        isAdmin
-      }
-    }
-  }
-`;
 
 interface ProjectMembersTableProps {
     projectId: string;
+    isArchived?: boolean; 
 }
 
 export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, ProjectMembersTableProps>(
-    ({ projectId }, ref) => {
+    ({ projectId, isArchived = false }, ref) => {
+
+        const [actionError, setActionError] = useState<string | null>(null);
         const {
             data,
             loading,
@@ -85,12 +65,10 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
         });
 
         const [updateRole, { loading: updating }] = useMutation(UPDATE_PROJECT_MEMBER_ROLE);
-
         const [removeMember, { loading: removing }] = useMutation(REMOVE_PROJECT_MEMBER);
 
         const memberships = data?.projectMemberships ?? [];
         const currentUserId = meData?.me?.id ?? null;
-
         const isAdmin = meData?.me?.isAdmin ?? false;
 
         const currentUserMembership = memberships.find((m) => m.userId === currentUserId);
@@ -98,6 +76,7 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
 
         const handleChangeRole = async (membership: ProjectMembership, newRole: string) => {
             if (newRole === membership.projectRole) return;
+            setActionError(null);
 
             if (!canManageRoles) {
                 alert("Лише менеджер або адміністратор може змінювати ролі учасників.");
@@ -130,13 +109,14 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
         };
 
         const handleRemoveMember = async (membership: ProjectMembership) => {
+            setActionError(null);
             if (!canManageRoles) {
-                alert("Лише менеджер або адміністратор може видаляти учасників.");
+                setActionError("Лише менеджер або адміністратор може видаляти учасників.");
                 return;
             }
 
             if (membership.userId === currentUserId) {
-                alert("Ви не можете видалити самі себе з проєкту.");
+                setActionError("Ви не можете видалити самі себе з проєкту.");
                 return;
             }
 
@@ -148,13 +128,13 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                 await removeMember({
                     variables: {
                         projectId,
-                        userId: membership.userId,
+                        memberUserId: membership.userId,
                     },
                 });
 
                 await refetch();
             } catch (err: any) {
-                alert(getFriendlyErrorMessage(err));
+                setActionError(getFriendlyErrorMessage(err));
             }
         };
 
@@ -183,9 +163,22 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                     </span>
                 </div>
 
-                {!canManageRoles && memberships.length > 0 && (
+                {actionError && (
+                    <div className="px-6 py-3 bg-red-50 border-b border-red-100 text-sm text-red-700 flex justify-between items-center">
+                        <span>{actionError}</span>
+                        <button 
+                            onClick={() => setActionError(null)} 
+                            className="text-red-400 hover:text-red-700 transition-colors font-bold ml-4"
+                            title="Сховати"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                )}
+
+                {!canManageRoles && !isArchived && memberships.length > 0 && (
                     <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-100 text-sm text-yellow-800">
-                        Лише менеджер може змінювати ролі учасників.
+                        Лише менеджер може змінювати ролі та склад учасників.
                     </div>
                 )}
 
@@ -203,7 +196,7 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                         <tbody className="divide-y divide-gray-100">
                             {memberships.map((m) => {
                                 const isSelf = m.userId === currentUserId;
-                                const isDisabled = updating || removing || !canManageRoles || isSelf;
+                                const isDisabled = updating || removing || !canManageRoles || isSelf || isArchived;
 
                                 return (
                                     <tr key={m.id} className="hover:bg-gray-50/50 transition-colors">
@@ -235,7 +228,7 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
                                                     <option value="contributor">Виконавець</option>
                                                 </select>
 
-                                                {isSelf && (
+                                                {isSelf && !isArchived && (
                                                     <span className="text-xs text-gray-500">
                                                         Ви не можете змінювати власну роль
                                                     </span>
@@ -265,7 +258,7 @@ export const ProjectMembersTable = forwardRef<{ refetchMembers: () => void }, Pr
 
                             {memberships.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} className="p-8 text-center text-text-muted">
+                                    <td colSpan={5} className="p-8 text-center text-text-muted">
                                         Учасників ще немає
                                     </td>
                                 </tr>

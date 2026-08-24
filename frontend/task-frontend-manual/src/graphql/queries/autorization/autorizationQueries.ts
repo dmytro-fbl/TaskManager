@@ -6,3 +6,12 @@ export const VERIFY_TOKEN_QUERY = gql`
     }
 `;
 
+export const GET_ME_QUERY = gql`
+  query GetMe {
+    me {
+      id
+      name
+      isAdmin
+    }
+  }
+`;

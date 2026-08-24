@@ -117,38 +117,61 @@ namespace TaskManager.API.Repositories
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
-            const string checkSql = "SELECT id FROM app.users WHERE email = @Email";
-
+            const string checkSql = "SELECT is_active FROM app.users WHERE email = @Email";
             await using var checkCommand = new NpgsqlCommand(checkSql, connection);
+            checkCommand.Parameters.AddWithValue("Email", email);
 
-            checkCommand.Parameters.AddWithValue("email", email);
+            var isActiveObj = await checkCommand.ExecuteScalarAsync();
 
-            var existingUser = await checkCommand.ExecuteScalarAsync();
-            if (existingUser != null)
+            if (isActiveObj != null)
             {
-                throw new GraphQLException("Користувач з таким email вже існує або отримав запрошення");
+                bool isActive = (bool)isActiveObj;
+                if (isActive)
+                {
+                    throw new GraphQLException("Користувач з таким email вже зареєстрований та активний.");
+                }
             }
 
-            string inviteToken = Guid.NewGuid().ToString();
-
+            string inviteToken = Guid.NewGuid().ToString("N");
             DateTime expiresAt = DateTime.UtcNow.AddHours(24);
 
-            const string sql = @"
-                INSERT INTO app.users (email, name, invite_token, invite_expires_at, is_active, is_admin)
-                VALUES (@Email, 'Pending User', @Token, @ExpiresAt, false, @IsAdmin)  
-                RETURNING invite_token;                               
-            ";
+            if (isActiveObj != null)
+            {
+                const string updateSql = @"
+            UPDATE app.users 
+            SET invite_token = @Token, 
+                invite_expires_at = @ExpiresAt, 
+                is_admin = @IsAdmin
+            WHERE email = @Email
+            RETURNING invite_token;
+        ";
 
-            await using var insertCommand = new NpgsqlCommand(sql, connection);
+                await using var updateCommand = new NpgsqlCommand(updateSql, connection);
+                updateCommand.Parameters.AddWithValue("Email", email);
+                updateCommand.Parameters.AddWithValue("Token", inviteToken);
+                updateCommand.Parameters.AddWithValue("ExpiresAt", expiresAt);
+                updateCommand.Parameters.AddWithValue("IsAdmin", isAdmin);
 
-            insertCommand.Parameters.AddWithValue("Email", email);
-            insertCommand.Parameters.AddWithValue("Token", inviteToken);
-            insertCommand.Parameters.AddWithValue("ExpiresAt", expiresAt);
-            insertCommand.Parameters.AddWithValue("IsAdmin", isAdmin);
+                var updatedToken = (string?)await updateCommand.ExecuteScalarAsync();
+                return updatedToken ?? throw new GraphQLException("Помилка оновлення токена.");
+            }
+            else
+            {
+                const string insertSql = @"
+            INSERT INTO app.users (email, name, invite_token, invite_expires_at, is_active, is_admin)
+            VALUES (@Email, 'Pending User', @Token, @ExpiresAt, false, @IsAdmin)  
+            RETURNING invite_token;                               
+        ";
 
-            var resultToken = (string?)await insertCommand.ExecuteScalarAsync();
+                await using var insertCommand = new NpgsqlCommand(insertSql, connection);
+                insertCommand.Parameters.AddWithValue("Email", email);
+                insertCommand.Parameters.AddWithValue("Token", inviteToken);
+                insertCommand.Parameters.AddWithValue("ExpiresAt", expiresAt);
+                insertCommand.Parameters.AddWithValue("IsAdmin", isAdmin);
 
-            return resultToken ?? throw new GraphQLException("Помилка генерації токена");
+                var insertedToken = (string?)await insertCommand.ExecuteScalarAsync();
+                return insertedToken ?? throw new GraphQLException("Помилка генерації токена.");
+            }
         }
 
         public async Task<string?> GetEmailByInviteTokenAsync(string token)

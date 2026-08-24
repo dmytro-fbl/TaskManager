@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useMutation } from "@apollo/client/react";
-import { CREATE_PROJECT } from "../../../graphql/mutations/projectMutation";
+import { CREATE_PROJECT } from "../../../graphql/mutations/project/projectMutation";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import ErrorMessage from "../../../components/ui/ErrorMessage";
 
@@ -13,6 +13,8 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreated 
     const [description, setDescription] = useState("");
     const [budgetCap, setBudgetCap] = useState<string>("");
     const [localError, setLocalError] = useState<string | null>(null);
+
+    const [deadline, setDeadline] = useState<string>("");
 
     const [createProject, { loading, error }] = useMutation(CREATE_PROJECT);
 
@@ -42,6 +44,16 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreated 
             return;
         }
 
+        if (!deadline.trim()) {
+            setLocalError("Будь ласка, вкажіть дедлайн проєкту.");
+            return;
+        }
+
+        let parsedDeadline = null;
+        if (deadline.trim()) {
+            parsedDeadline = new Date(deadline).toISOString();
+        }
+
         try {
             await createProject({
                 variables: {
@@ -49,6 +61,7 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreated 
                         title: trimmedTitle,
                         description: description.trim(),
                         budgetCap: parsedBudget,
+                        deadline: parsedDeadline,
                     },
                 },
             });
@@ -56,6 +69,7 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreated 
             setTitle("");
             setDescription("");
             setBudgetCap("");
+            setDeadline("");
 
             if (onCreated) {
                 await onCreated();
@@ -106,6 +120,17 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreated 
                         onChange={(e) => setBudgetCap(e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="5000.00"
+                    />
+                </div>
+
+                <div className="flex-1">
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Дедлайн</label>
+                    <input
+                        type="date"
+                        required
+                        value={deadline}
+                        onChange={(e) => setDeadline(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
 

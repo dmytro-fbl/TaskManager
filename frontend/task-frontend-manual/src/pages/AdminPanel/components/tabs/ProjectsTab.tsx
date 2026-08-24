@@ -3,8 +3,8 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { FiLock, FiUnlock, FiEye } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { getFriendlyErrorMessage } from "../../../../utils/errorHandler";
-import { GET_ADMIN_PROJECTS } from "../../../../graphql/queries/projectQuery";
-import { TOGGLE_PROJECT_ARCHIVE } from "../../../../graphql/mutations/projectMutation";
+import { GET_ADMIN_PROJECTS } from "../../../../graphql/queries/project/projectQuery";
+import { TOGGLE_PROJECT_ARCHIVE } from "../../../../graphql/mutations/project/projectMutation";
 
 // Типізація для нашого DTO
 interface AdminProject {

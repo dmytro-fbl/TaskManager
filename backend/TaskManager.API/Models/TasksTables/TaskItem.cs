@@ -7,8 +7,7 @@
 
         public Guid AuthorId { get; set; }
 
-        public Guid? AssigneeId { get; set; }
-
+        public List<Guid> AssigneeIds { get; set; } = new();
         public Guid StatusId { get; set; }
 
         public string Title { get; set; } = string.Empty;
@@ -20,10 +19,6 @@
         public DateTime? StartDate { get; set; }
 
         public DateTime? DueDate { get; set; }
-
-        public decimal? EstimatedBudget { get; set; }
-
-        public string? EstimatedUnit { get; set; }
 
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 

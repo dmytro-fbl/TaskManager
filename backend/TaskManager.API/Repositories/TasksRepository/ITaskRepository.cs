@@ -1,4 +1,5 @@
-﻿using TaskManager.API.Models.TasksTables;
+﻿using TaskManager.API.DTOs.Tasks;
+using TaskManager.API.Models.TasksTables;
 
 namespace TaskManager.API.Repositories.TasksRepository
 {
@@ -18,5 +19,16 @@ namespace TaskManager.API.Repositories.TasksRepository
         Task<bool> IsProjectStatusAsync(Guid projectId, Guid statusId);
         Task<bool> UpdateTaskStatusAsync( Guid taskId, Guid statusId);
         Task<bool> AddProjectHoursAsync(Guid projectId, Guid userId, decimal hours, string? description = null);
+
+        Task<bool> HasUserTasksInProjectAsync(Guid projectId, Guid userId);
+
+        Task<bool> UpdateTaskAsync(UpdateTaskInput input);
+
+        Task<bool> AddWorkLogAsync(Guid userId, WorkLogInput input);
+        Task<IEnumerable<WorkLogDTO>> GetTaskWorkLogsAsync(Guid taskId);
+        Task<bool> DeleteTaskAsync(Guid taskId);
+        Task<bool> HasWorkLogsAsync(Guid taskId);
+        Task<bool> IsRoleInProjectAsync(Guid projectId, Guid roleId);
+
     }
 }

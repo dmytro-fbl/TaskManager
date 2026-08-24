@@ -1,6 +1,7 @@
-﻿using Npgsql;
+﻿using System.Data;
+using Npgsql;
 using TaskManager.API.DTOs;
-using TaskManager.API.DTOs.Dashboard;
+using TaskManager.API.DTOs.Projects;
 using TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
 
@@ -26,7 +27,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             try
             {
-                // Перевірка існування проекту
                 const string projectCheckSql = "SELECT id FROM app.projects WHERE id = @project_id;";
                 await using var projectCheckCmd = new NpgsqlCommand(projectCheckSql, connection);
                 projectCheckCmd.Parameters.AddWithValue("project_id", projectId);
@@ -37,7 +37,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     throw new GraphQLException("Проект не знайдено");
                 }
 
-                // Знайти існуючого користувача по email (зареєстрований, активний)
                 const string userSql = @"
                     SELECT id
                     FROM app.users
@@ -54,7 +53,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     throw new GraphQLException($"Користувач з email '{email}' не знайдено або він не активний/не зареєстрований.");
                 }
 
-                // Перевірити, що юзер ще не в проекті
                 const string memberCheckSql = @"
                     SELECT COUNT(1)
                     FROM app.project_memberships
@@ -70,7 +68,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     throw new GraphQLException("Користувач вже є членом цього проекту.");
                 }
 
-                // Згенерувати токен інвайту
                 var token = Guid.NewGuid().ToString("N");
 
                 const string insertInviteSql = @"
@@ -117,6 +114,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     p.status,
                     p.owner_id,
                     p.is_archived,
+                    p.deadline,
                     p.created_at,
                     u.name,
                     u.email
@@ -142,6 +140,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     Status = reader.GetString(reader.GetOrdinal("status")),
                     OwnerId = reader.GetGuid(reader.GetOrdinal("owner_id")),
                     IsArchived = reader.GetBoolean(reader.GetOrdinal("is_archived")),
+                    Deadline = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("deadline")),
                     CreatedAt = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("created_at")),
                     OwnerName = reader.GetString(reader.GetOrdinal("name")),
                     OwnerEmail = reader.GetString(reader.GetOrdinal("email"))
@@ -156,7 +155,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             string sql = @"
-                SELECT id, title, description, budget_cap, status, owner_id, is_archived, created_at, updated_at 
+                SELECT id, title, description, budget_cap, deadline, status, owner_id, is_archived, created_at, updated_at 
                 FROM app.projects
                 WHERE id = @id;
             ";
@@ -180,7 +179,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                     Status = reader.GetString(reader.GetOrdinal("status")),
                     OwnerId = reader.GetGuid(reader.GetOrdinal("owner_id")),
                     IsArchived = reader.GetBoolean(reader.GetOrdinal("is_archived")),
-
+                    Deadline = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("deadline")),
                     CreatedAt = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("created_at")),
                     UpdatedAt = reader.IsDBNull(reader.GetOrdinal("updated_at"))
                         ? default : reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("updated_at"))
@@ -384,12 +383,12 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             await using var transaction = await connection.BeginTransactionAsync();
 
             const string sql = @"
-            INSERT INTO app.projects ( 
-                id, title,description, budget_cap,status,owner_id,is_archived,created_at, updated_at
-            )
-            VALUES (
-                @id, @title, @description, @budget_cap, @status, @owner_id, @is_archived, @created_at, @updated_at
-            );
+                INSERT INTO app.projects (
+                    id, title, description, budget_cap, status, owner_id, is_archived, deadline, created_at, updated_at
+                )
+                VALUES (
+                    @id, @title, @description, @budget_cap, @status, @owner_id, @is_archived, @deadline, @created_at, @updated_at
+                );
 
             INSERT INTO app.project_memberships (
                 project_id, user_id, project_role, joined_at
@@ -434,6 +433,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             command.Parameters.AddWithValue("status", project.Status);
             command.Parameters.AddWithValue("owner_id", project.OwnerId);
             command.Parameters.AddWithValue("is_archived", project.IsArchived);
+            command.Parameters.AddWithValue("deadline", (object?)project.Deadline ?? DBNull.Value);
             command.Parameters.AddWithValue("created_at", now);
             command.Parameters.AddWithValue("updated_at", now);
 
@@ -600,7 +600,12 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             return rowAffected > 0;
         }
 
-        public async Task<bool> UpdateProjectAsync(Guid projectId, string title, string? description, decimal? budgetCap)
+        public async Task<bool> UpdateProjectAsync(
+            Guid projectId,
+            string title,
+            string? description,
+            decimal? budgetCap,
+            DateTimeOffset deadline)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
@@ -609,16 +614,18 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 SET title = @title,
                     description = @description,
                     budget_cap= @budget_cap,
+                    deadline = @deadline,
                     updated_at = now()
                 WHERE id = @id;
             ";
 
-            await using var command = new NpgsqlCommand( sql, connection);
+            await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("id", projectId);
             command.Parameters.AddWithValue("title", title);
             command.Parameters.AddWithValue("description", description ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("budget_cap", budgetCap ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("deadline", deadline);
 
             var rowAffected = await command.ExecuteNonQueryAsync();
 
@@ -635,7 +642,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 WHERE project_id = @project_id AND user_id = @user_id;
             ";
 
-            await using var command = new NpgsqlCommand( sql, connection);
+            await using var command = new NpgsqlCommand(sql, connection);
 
             command.Parameters.AddWithValue("project_id", projectId);
             command.Parameters.AddWithValue("user_id", userId);
@@ -685,266 +692,97 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             return statuses;
         }
 
-        public async Task<IEnumerable<MyProjectDashboardDto>> GetMyProjectsWithHoursAsync(Guid userId)
+        public async Task<bool> RemoveMemberAsync(Guid projectId, Guid userId)
         {
-            var projects = new List<MyProjectDashboardDto>();
-
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                SELECT
-                    p.id,
-                    p.title,
-                    p.description,
-                    p.budget_cap AS budget_hours,
-                    p.status,
-                    pm.project_role AS my_role,
-                    COALESCE(SUM(w.hours_spent), 0) AS used_hours
-                FROM app.projects p
-                JOIN app.project_memberships pm ON pm.project_id = p.id
-                LEFT JOIN app.tasks t ON t.project_id = p.id
-                LEFT JOIN app.worklogs w ON w.task_id = t.id
-                WHERE pm.user_id = @user_id
-                  AND p.is_archived = false
-                GROUP BY
-                    p.id, p.title, p.description, p.budget_cap, p.status, pm.project_role
-                ORDER BY p.created_at DESC;
+                DELETE FROM app.project_memberships 
+                WHERE project_id = @project_id AND user_id = @user_id;
             ";
 
             await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("project_id", projectId);
             command.Parameters.AddWithValue("user_id", userId);
+
+            int rowAffected = await command.ExecuteNonQueryAsync();
+
+            return rowAffected > 0;
+
+        }
+
+
+        public async Task<IEnumerable<ProjectRoleDTO>> GetProjectRolesAsync(Guid projectId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            var roles = new List<ProjectRoleDTO>();
+
+            const string sql = @"
+                SELECT id, project_id, name
+                FROM app.project_role_labels 
+                WHERE project_id = @project_id
+                ORDER BY name ASC;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("project_id", projectId);
 
             await using var reader = await command.ExecuteReaderAsync();
 
             while (await reader.ReadAsync())
             {
-                projects.Add(new MyProjectDashboardDto
+                roles.Add(new ProjectRoleDTO
                 {
                     Id = reader.GetGuid(reader.GetOrdinal("id")),
-                    Title = reader.GetString(reader.GetOrdinal("title")),
-                    Description = reader.IsDBNull(reader.GetOrdinal("description"))
-                        ? null
-                        : reader.GetString(reader.GetOrdinal("description")),
-                    BudgetHours = reader.IsDBNull(reader.GetOrdinal("budget_hours"))
-                        ? null
-                        : reader.GetDecimal(reader.GetOrdinal("budget_hours")),
-                    Status = reader.GetString(reader.GetOrdinal("status")),
-                    MyRole = reader.GetString(reader.GetOrdinal("my_role")),
-                    UsedHours = reader.GetDecimal(reader.GetOrdinal("used_hours"))
+                    ProjectId = reader.GetGuid(reader.GetOrdinal("project_id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
                 });
+
             }
 
-            return projects;
+            return roles;
         }
 
-        public async Task<IEnumerable<AvailableProjectDto>> GetAvailableProjectsAsync(Guid userId)
+        public async Task<ProjectRoleDTO> CreateProjectRoleAsync(Guid projectId, string roleName)
         {
-            var projects = new List<AvailableProjectDto>();
-
             await using var connection = await _dataSource.OpenConnectionAsync();
 
-            const string sql = @"
-                SELECT
-                    p.id,
-                    p.title,
-                    p.description,
-                    p.status,
-                    u.id AS manager_id,
-                    u.name AS manager_name,
-                    u.email AS manager_email
-                FROM app.projects p
-                JOIN app.users u ON u.id = p.owner_id
-                WHERE p.is_archived = false
-                  AND NOT EXISTS (
-                      SELECT 1
-                      FROM app.project_memberships pm
-                      WHERE pm.project_id = p.id
-                        AND pm.user_id = @user_id
-                  )
-                ORDER BY p.created_at DESC;
-            ";
+            const string checkSql = "SELECT EXISTS(SELECT 1 FROM app.project_role_labels WHERE project_id = @project_id AND name = @name)";
+            await using var checkCmd = new NpgsqlCommand(checkSql, connection);
 
-            await using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.AddWithValue("user_id", userId);
+            checkCmd.Parameters.AddWithValue("project_id", projectId);
+            checkCmd.Parameters.AddWithValue("name", roleName.Trim());
 
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
+            var exists = (bool)(await checkCmd.ExecuteScalarAsync() ?? false);
+            if (exists)
             {
-                projects.Add(new AvailableProjectDto
-                {
-                    Id = reader.GetGuid(reader.GetOrdinal("id")),
-                    Title = reader.GetString(reader.GetOrdinal("title")),
-                    Description = reader.IsDBNull(reader.GetOrdinal("description"))
-                        ? null
-                        : reader.GetString(reader.GetOrdinal("description")),
-                    Status = reader.GetString(reader.GetOrdinal("status")),
-                    ManagerId = reader.GetGuid(reader.GetOrdinal("manager_id")),
-                    ManagerName = reader.GetString(reader.GetOrdinal("manager_name")),
-                    ManagerEmail = reader.GetString(reader.GetOrdinal("manager_email"))
-                });
+                throw new GraphQLException("Роль з такою назвою вже існує в цьому проєкті.");
             }
 
-            return projects;
-        }
-
-        public async Task<IEnumerable<ManagerProjectDashboardDto>> GetManagerProjectsWithRoleHoursAsync(Guid userId)
-        {
-            await using var connection = await _dataSource.OpenConnectionAsync();
-
-            const string sql = @"
-                WITH project_hours AS (
-                    SELECT
-                        p.id AS project_id,
-                        p.title,
-                        p.status,
-                        p.budget_cap AS budget_hours,
-                        COALESCE(SUM(w.hours_spent), 0) AS used_hours
-                    FROM app.projects p
-                    JOIN app.project_memberships pm ON pm.project_id = p.id
-                    LEFT JOIN app.tasks t ON t.project_id = p.id
-                    LEFT JOIN app.worklogs w ON w.task_id = t.id
-                    WHERE pm.user_id = @user_id
-                      AND pm.project_role = 'manager'
-                      AND p.is_archived = false
-                    GROUP BY p.id, p.title, p.status, p.budget_cap
-                ),
-                role_hours AS (
-                    SELECT
-                        p.id AS project_id,
-                        prl.name AS role_name,
-                        COALESCE(SUM(w.hours_spent), 0) AS used_hours
-                    FROM app.projects p
-                    JOIN app.project_memberships pm ON pm.project_id = p.id
-                    LEFT JOIN app.tasks t ON t.project_id = p.id
-                    LEFT JOIN app.worklogs w ON w.task_id = t.id
-                    LEFT JOIN app.project_role_labels prl ON w.role_label_id = prl.id
-                    WHERE pm.user_id = @user_id
-                      AND pm.project_role = 'manager'
-                      AND p.is_archived = false
-                    GROUP BY p.id, prl.name
-                )
-                SELECT
-                    ph.project_id,
-                    ph.title,
-                    ph.status,
-                    ph.budget_hours,
-                    ph.used_hours,
-                    rh.role_name,
-                    rh.used_hours AS role_used_hours
-                FROM project_hours ph
-                LEFT JOIN role_hours rh ON rh.project_id = ph.project_id
-                ORDER BY ph.project_id, rh.role_name;
+            const string insertSql = @"
+                INSERT INTO app.project_role_labels (project_id, name)
+                VALUES (@project_id, @name)
+                RETURNING id, name;
             ";
 
-            await using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.AddWithValue("user_id", userId);
+            await using var insertCmd = new NpgsqlCommand(insertSql, connection);
 
-            await using var reader = await command.ExecuteReaderAsync();
+            insertCmd.Parameters.AddWithValue("project_id", projectId);
+            insertCmd.Parameters.AddWithValue("name", roleName.Trim());
 
-            var projectsDict = new Dictionary<Guid, ManagerProjectDashboardDto>();
-
-            while (await reader.ReadAsync())
-            {
-                var projectId = reader.GetGuid(reader.GetOrdinal("project_id"));
-
-                if (!projectsDict.TryGetValue(projectId, out var project))
-                {
-                    project = new ManagerProjectDashboardDto
-                    {
-                        Id = projectId,
-                        Title = reader.GetString(reader.GetOrdinal("title")),
-                        Status = reader.GetString(reader.GetOrdinal("status")),
-                        BudgetHours = reader.GetDecimal(reader.GetOrdinal("budget_hours")),
-                        UsedHours = reader.GetDecimal(reader.GetOrdinal("used_hours")),
-                        RolesHours = new List<RoleHoursDto>()
-                    };
-
-                    projectsDict[projectId] = project;
-                }
-
-                if (!reader.IsDBNull(reader.GetOrdinal("role_name")))
-                {
-                    project.RolesHours.Add(new RoleHoursDto
-                    {
-                        RoleName = reader.GetString(reader.GetOrdinal("role_name")),
-                        UsedHours = reader.GetDecimal(reader.GetOrdinal("role_used_hours"))
-                    });
-                }
-            }
-
-            return projectsDict.Values;
-        }
-
-        public async Task<DashboardStatsDto> GetDashboardStatsAsync(Guid userId)
-        {
-            await using var connection = await _dataSource.OpenConnectionAsync();
-
-            const string sql = @"
-                WITH user_projects AS (
-                    SELECT
-                        p.id,
-                        p.budget_cap AS budget_hours
-                    FROM app.projects p
-                    JOIN app.project_memberships pm ON pm.project_id = p.id
-                    WHERE pm.user_id = @user_id
-                      AND p.is_archived = false
-                ),
-                used AS (
-                    SELECT
-                        p.id AS project_id,
-                        COALESCE(SUM(w.hours_spent), 0) AS used_hours
-                    FROM app.projects p
-                    JOIN app.project_memberships pm ON pm.project_id = p.id
-                    LEFT JOIN app.tasks t ON t.project_id = p.id
-                    LEFT JOIN app.worklogs w ON w.task_id = t.id
-                    WHERE pm.user_id = @user_id
-                      AND p.is_archived = false
-                    GROUP BY p.id
-                ),
-                project_stats AS (
-                    SELECT
-                        up.id AS project_id,
-                        up.budget_hours,
-                        u.used_hours,
-                        CASE
-                            WHEN up.budget_hours IS NULL OR up.budget_hours = 0 THEN 'no_budget'
-                            WHEN u.used_hours / up.budget_hours < 0.8 THEN 'on_track'
-                            WHEN u.used_hours / up.budget_hours < 1.0 THEN 'at_risk'
-                            ELSE 'over_budget'
-                        END AS budget_status
-                    FROM user_projects up
-                    JOIN used u ON u.project_id = up.id
-                )
-                SELECT
-                    COUNT(*) AS total_projects,
-                    COALESCE(SUM(budget_hours), 0) AS total_budget_hours,
-                    COALESCE(SUM(used_hours), 0) AS total_used_hours,
-                    SUM(CASE WHEN budget_status = 'on_track' THEN 1 ELSE 0 END) AS projects_on_track,
-                    SUM(CASE WHEN budget_status = 'at_risk' THEN 1 ELSE 0 END) AS projects_at_risk,
-                    SUM(CASE WHEN budget_status = 'over_budget' THEN 1 ELSE 0 END) AS projects_over_budget
-                FROM project_stats;
-            ";
-
-            await using var command = new NpgsqlCommand(sql, connection);
-            command.Parameters.AddWithValue("user_id", userId);
-
-            await using var reader = await command.ExecuteReaderAsync();
+            await using var reader = await insertCmd.ExecuteReaderAsync();
 
             if (await reader.ReadAsync())
             {
-                return new DashboardStatsDto
+                return new ProjectRoleDTO
                 {
-                    TotalProjects = reader.GetInt32(reader.GetOrdinal("total_projects")),
-                    TotalBudgetHours = reader.GetDecimal(reader.GetOrdinal("total_budget_hours")),
-                    TotalUsedHours = reader.GetDecimal(reader.GetOrdinal("total_used_hours")),
-                    ProjectsOnTrack = reader.GetInt32(reader.GetOrdinal("projects_on_track")),
-                    ProjectsAtRisk = reader.GetInt32(reader.GetOrdinal("projects_at_risk")),
-                    ProjectsOverBudget = reader.GetInt32(reader.GetOrdinal("projects_over_budget"))
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Name = reader.GetString(reader.GetOrdinal("name"))
                 };
             }
 
-            return new DashboardStatsDto();
+            throw new Exception("Не вдалося створити роль.");
         }
     }
 }

@@ -625,3 +625,40 @@ VALUES (
 ALTER TABLE app.users
 ADD COLUMN refresh_token TEXT,
 ADD COLUMN refresh_token_expiry_time TIMESTAMPTZ;
+
+ALTER TABLE app.projects
+ADD COLUMN deadline timestamptz;
+
+ALTER TABLE app.worklogs ALTER COLUMN role_label_id DROP NOT NULL;
+
+ALTER TABLE app.worklogs
+  ALTER COLUMN log_date TYPE timestamptz USING log_date::timestamptz;
+
+ALTER TABLE app.worklogs
+  ALTER COLUMN log_date SET DEFAULT now();
+
+ALTER TABLE app.tasks
+DROP COLUMN estimated_unit,
+DROP COLUMN estimated_budget;
+
+DROP TABLE IF EXISTS app.project_role_rates CASCADE;
+
+ALTER TABLE app.project_role_labels DROP COLUMN IF EXISTS code;
+
+ALTER TABLE app.tasks
+ADD COLUMN role_id UUID REFERENCES app.project_role_labels(id) ON DELETE SET NULL;
+
+ALTER TABLE app.task_comments
+ADD COLUMN parent_comment_id uuid NULL,
+ADD CONSTRAINT fk_task_comments_parent
+    FOREIGN KEY (parent_comment_id)
+    REFERENCES app.task_comments(id)
+    ON DELETE CASCADE;
+
+ALTER TABLE app.task_comments 
+ADD COLUMN is_deleted boolean not null default false;
+
+ALTER TABLE app.task_assignments
+ADD COLUMN IF NOT EXISTS role_id UUID REFERENCES app.project_role_labels(id) ON DELETE SET NULL;
+
+ALTER TABLE app.tasks DROP COLUMN IF EXISTS role_id;

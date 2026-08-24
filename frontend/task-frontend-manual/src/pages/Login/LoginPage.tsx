@@ -4,6 +4,7 @@ import { gql } from '@apollo/client';
 import { useMutation } from '@apollo/client/react';
 import ErrorMessage from '../../components/ui/ErrorMessage';
 import { getFriendlyErrorMessage } from '../../utils/errorHandler';
+import { LOGIN_MUTATION } from '../../graphql/mutations/autorization/autorizationMutations';
 
 interface LoginData {
   login: {
@@ -17,15 +18,7 @@ interface LoginVars {
   password: string;
 }
 
-const LOGIN_MUTATION = gql`
-  mutation Login($email: String!, $password: String!) {
-    login(request: { email: $email, password: $password }) {
-      accessToken,
-      refreshToken
 
-    }
-  }
-`;
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');

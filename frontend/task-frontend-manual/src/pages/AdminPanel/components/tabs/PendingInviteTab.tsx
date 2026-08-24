@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@apollo/client/react";
-import { FiClock, FiAlertCircle, FiCopy, FiPlus, FiX } from "react-icons/fi";
+import { FiClock, FiAlertCircle, FiCopy, FiPlus, FiX, FiRefreshCw } from "react-icons/fi";
 import { getFriendlyErrorMessage } from "../../../../utils/errorHandler";
-import { GET_PENDING_INVITES_QUERY } from "../../../../graphql/queries/userQuery";
-import { GENERATE_INVITE_MUTATIONS } from "../../../../graphql/mutations/invateMutations";
+import { GET_PENDING_INVITES_QUERY } from "../../../../graphql/queries/user/userQuery";
+import { GENERATE_INVITE_MUTATIONS } from "../../../../graphql/mutations/autorization/invateMutations";
 import ErrorMessage from "../../../../components/ui/ErrorMessage";
 
 
@@ -82,6 +82,25 @@ export default function PendingInviteTab() {
         }
     };
 
+    const handleRegenerate = async (userEmail: string, userIsAdmin: boolean) => {
+        try {
+            const response = await generateInvite({
+                variables: { email: userEmail, isAdmin: userIsAdmin }
+            });
+
+            await refetch();
+
+            if (response.data?.generateInvite) {
+                const token = response.data.generateInvite;
+                const link = `${window.location.origin}/register?token=${token}`;
+                navigator.clipboard.writeText(link);
+                alert('Нове посилання успішно згенеровано та скопійовано в буфер обміну!');
+            }
+        } catch (err) {
+            alert(getFriendlyErrorMessage(err as any) ?? "Помилка при перегенерації запрошення.");
+        }
+    };
+
 
     if (loading) return <div className="p-10 text-center">Завантаження...</div>;
     if (error) return <div className="p-10 text-red-500">{getFriendlyErrorMessage(error)}</div>;
@@ -143,17 +162,24 @@ export default function PendingInviteTab() {
                                             </div>
                                         </td>
                                         <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => copyToClipboard(user.inviteToken)}
-                                                disabled={isExpired}
-                                                title={isExpired ? "Посилання прострочене" : "Скопіювати посилання"}
-                                                className={`p-2 rounded-md transition-colors ${isExpired
-                                                    ? 'text-gray-300 cursor-not-allowed'
-                                                    : 'text-gray-500 hover:text-primary hover:bg-primary/10'
-                                                    }`}
-                                            >
-                                                <FiCopy size={18} />
-                                            </button>
+                                            {isExpired ? (
+                                                <button
+                                                    onClick={() => handleRegenerate(user.email, user.isAdmin)}
+                                                    disabled={inviteLoading}
+                                                    title="Перегенерувати посилання"
+                                                    className="p-2 rounded-md transition-colors text-orange-500 hover:text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+                                                >
+                                                    <FiRefreshCw size={18} className={inviteLoading ? "animate-spin" : ""} />
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => copyToClipboard(user.inviteToken)}
+                                                    title="Скопіювати посилання"
+                                                    className="p-2 rounded-md transition-colors text-gray-500 hover:text-primary hover:bg-primary/10"
+                                                >
+                                                    <FiCopy size={18} />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 );

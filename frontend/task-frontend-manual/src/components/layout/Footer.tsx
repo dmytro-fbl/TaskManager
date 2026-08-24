@@ -5,10 +5,6 @@ export default function Footer() {
         <p className="text-text-muted text-sm text-center md:text-left">
           © {new Date().getFullYear()} TaskTracker. Всі права захищені.
         </p>
-        {/* <div className="flex gap-4 text-sm">
-          <a href="#" className="text-text-muted hover:text-primary transition">Документація</a>
-          <a href="#" className="text-text-muted hover:text-primary transition">Підтримка</a>
-        </div> */}
       </div>
     </footer>
   );
