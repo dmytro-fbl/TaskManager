@@ -1,0 +1,16 @@
+[1mdiff --git a/backend/TaskManager.API/Services/TokenService.cs b/backend/TaskManager.API/Services/TokenService.cs[m
+[1mindex e9b0432..671f66f 100644[m
+[1m--- a/backend/TaskManager.API/Services/TokenService.cs[m
+[1m+++ b/backend/TaskManager.API/Services/TokenService.cs[m
+[36m@@ -17,8 +17,9 @@[m [mnamespace TaskManager.API.Services[m
+         {[m
+             _config = config;[m
+ [m
+[31m-            var jwtSecretKey = _config.GetSection("Jwt:Key").Value;[m
+[31m-            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey));[m
+[32m+[m[32m            var jwtSecretKey = _config["Jwt:Key"] ?? throw new Exception("Jwt:Key не знайдений");[m
+[32m+[m[32m            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)[m
+[32m+[m[32m            );[m
+         }[m
+         public string CreateToken(User user)[m
+         {[m

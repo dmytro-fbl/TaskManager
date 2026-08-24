@@ -18,6 +18,7 @@ namespace TaskManager.API.Repositories.TasksRepository
         Task<bool> RemoveTaskAssignmentAsync(Guid taskId, Guid userId);
         Task<bool> IsProjectStatusAsync(Guid projectId, Guid statusId);
         Task<bool> UpdateTaskStatusAsync( Guid taskId, Guid statusId);
+        Task AddProjectHoursAsync(Guid projectId, Guid userId, decimal hours, string? roleLabelName = null);
 
         Task<bool> HasUserTasksInProjectAsync(Guid projectId, Guid userId);
 
@@ -27,6 +28,7 @@ namespace TaskManager.API.Repositories.TasksRepository
         Task<IEnumerable<WorkLogDTO>> GetTaskWorkLogsAsync(Guid taskId);
         Task<bool> DeleteTaskAsync(Guid taskId);
         Task<bool> HasWorkLogsAsync(Guid taskId);
-        public Task<bool> IsRoleInProjectAsync(Guid projectId, Guid roleId);
+        Task<bool> IsRoleInProjectAsync(Guid projectId, Guid roleId);
+
     }
 }
