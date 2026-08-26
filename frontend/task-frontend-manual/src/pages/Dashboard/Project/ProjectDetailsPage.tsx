@@ -18,6 +18,7 @@ import ErrorMessage from "../../../components/ui/ErrorMessage";
 import { getFriendlyErrorMessage } from "../../../utils/errorHandler";
 import { EditProjectModal } from "../../Project/components/EditProjectModel";
 import { GET_PROJECT_DETAILS } from "../../../graphql/queries/project/projectQuery";
+
 interface Project {
     id: string;
     title: string;
@@ -26,31 +27,78 @@ interface Project {
     deadline?: string | null;
     status: string;
     isArchived: boolean;
+    ownerId: string; 
     createdAt: string;
 }
 
+const GET_ME_QUERY = gql`
+  query GetMeForProjectDetails {
+    me {
+      id
+      isAdmin
+    }
+  }
+`;
 
+const GET_PROJECT_MEMBERSHIPS_ROLES = gql`
+  query GetProjectMembershipsRoles($projectId: UUID!) {
+    projectMemberships(projectId: $projectId) {
+      userId
+      projectRole
+    }
+  }
+`;
+interface MeResponse {
+    me: {
+        id: string;
+        isAdmin: boolean;
+    } | null;
+}
+
+interface ProjectMembershipsRolesResponse {
+    projectMemberships: {
+        userId: string;
+        projectRole: string;
+    }[];
+}
 
 export const ProjectDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
 
-    const tableRef = useRef<{
-        refetchMembers: () => void;
-    } | null>(null);
+    const tableRef = useRef<{ refetchMembers: () => void; } | null>(null);
 
     const [activeTab, setActiveTab] = useState<"project" | "tasks">("project");
-
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [selectedStatusId, setSelectedStatusId] = useState("");
 
-    const { data, loading, error, refetch } = useQuery<{
-        project: Project | null;
-    }>(GET_PROJECT_DETAILS, {
+    const { data, loading, error, refetch } = useQuery<{project: Project | null;}>(GET_PROJECT_DETAILS, {
         variables: { id: id ?? "" },
         skip: !id,
         fetchPolicy: "network-only",
     });
+
+    const { data: meData } = useQuery<MeResponse>(GET_ME_QUERY, { fetchPolicy: "network-only" });
+
+    const { data: membersData } = useQuery<ProjectMembershipsRolesResponse>(GET_PROJECT_MEMBERSHIPS_ROLES, {
+        variables: { projectId: id },
+        skip: !id,
+        fetchPolicy: "network-only",
+    });
+
+    const project = data?.project;
+
+    const currentUserId = meData?.me?.id;
+    const isAdmin = meData?.me?.isAdmin ?? false;
+    const isOwner = project?.ownerId === currentUserId;
+
+    const myMembership = membersData?.projectMemberships?.find((m: any) => m.userId === currentUserId);
+    const isManager = myMembership?.projectRole === "manager";
+
+    const hasFullAccess = isAdmin || isOwner || isManager;
+    const canEditProject = hasFullAccess && !project?.isArchived;
+
+    const isViewerOnly = !isAdmin && !isOwner && !myMembership;
 
     const renderDeadline = (deadlineString?: string | null) => {
         if (!deadlineString) return <span className="text-gray-500 font-normal">Не вказано</span>;
@@ -94,7 +142,7 @@ export const ProjectDetailsPage: React.FC = () => {
     if (loading) {
         return (
             <div className="container mx-auto max-w-7xl px-4 py-8">
-                <div className="rounded-xl border border-gray-100 bg-white p-6 text-gray-500 shadow-sm">
+                <div className="rounded-xl border border-gray-100 bg-white p-6 text-gray-500 shadow-sm animate-pulse">
                     Завантаження даних проєкту...
                 </div>
             </div>
@@ -108,8 +156,6 @@ export const ProjectDetailsPage: React.FC = () => {
             </div>
         );
     }
-
-    const project = data?.project;
 
     if (!project) {
         return (
@@ -146,6 +192,21 @@ export const ProjectDetailsPage: React.FC = () => {
                 </div>
             )}
 
+            {!project.isArchived && isViewerOnly && (
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg shadow-sm">
+                    <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                            <FiInfo className="h-5 w-5 text-blue-500" />
+                        </div>
+                        <div className="ml-3">
+                            <p className="text-sm text-blue-700 font-medium">
+                                Ви переглядаєте цей проєкт у режимі читання (Viewer). Зміни можуть вносити лише учасники команди.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <h1 className="text-3xl font-bold text-text-main">{project.title}</h1>
@@ -154,7 +215,7 @@ export const ProjectDetailsPage: React.FC = () => {
                     </span>
                 </div>
 
-                {!project.isArchived && (
+                {canEditProject && (
                     <button
                         onClick={() => setIsEditModalOpen(true)}
                         className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
@@ -196,13 +257,12 @@ export const ProjectDetailsPage: React.FC = () => {
             <div className="pt-2">
                 {activeTab === "project" && (
                     <div className="space-y-8">
-                        {/* Картка деталей проєкту */}
                         <div className="space-y-4 rounded-xl border border-gray-100 bg-bg-card p-6 shadow-sm">
                             <h2 className="text-xl font-bold text-text-main border-b border-gray-100 pb-3">
                                 Деталі проєкту
                             </h2>
 
-                            {!project.isArchived && (
+                            {canEditProject && (
                                 <div className="flex flex-wrap items-center gap-3 pt-1">
                                     <label className="text-sm font-medium text-text-muted">
                                         Статус проєкту:
@@ -250,7 +310,7 @@ export const ProjectDetailsPage: React.FC = () => {
                                 Команда проєкту
                             </h2>
 
-                            {!project.isArchived && (
+                            {canEditProject && (
                                 <AddUserToProjectForm
                                     projectId={id}
                                     onUserAdded={() => {
@@ -262,7 +322,7 @@ export const ProjectDetailsPage: React.FC = () => {
                             <ProjectMembersTable
                                 projectId={id}
                                 ref={tableRef}
-                                isArchived={project.isArchived}
+                                isArchived={project.isArchived || isViewerOnly} 
                             />
                         </section>
                     </div>
@@ -270,12 +330,15 @@ export const ProjectDetailsPage: React.FC = () => {
 
                 {activeTab === "tasks" && (
                     <div>
-                        <ProjectTasks projectId={id} isArchived={project.isArchived} />
+                        <ProjectTasks 
+                            projectId={id} 
+                            isArchived={project.isArchived || isViewerOnly} 
+                        />
                     </div>
                 )}
             </div>
 
-            {!project.isArchived && (
+            {canEditProject && (
                 <EditProjectModal
                     isOpen={isEditModalOpen}
                     onClose={() => setIsEditModalOpen(false)}

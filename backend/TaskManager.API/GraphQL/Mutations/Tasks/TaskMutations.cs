@@ -154,12 +154,12 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                     currentUserId
                 );
 
-            if (!hasAccess)
-            {
-                throw new GraphQLException(
-                    "У вас немає доступу до цієї таски."
-                );
-            }
+            //if (!hasAccess)
+            //{
+            //    throw new GraphQLException(
+            //        "У вас немає доступу до цієї таски."
+            //    );
+            //}
 
             var statusExists = await taskRepository.IsProjectStatusAsync(
                 task.ProjectId,

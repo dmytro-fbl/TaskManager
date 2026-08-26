@@ -28,18 +28,18 @@ namespace TaskManager.API.GraphQL.Queries
                 throw new GraphQLException("Користувача не знайдено.");
             }
 
-            var hasAccess = currentUser.IsAdmin ||
-                            await projectRepository.IsUserInProjectAsync(
-                                projectId,
-                                userId
-                            );
+            //var hasAccess = currentUser.IsAdmin ||
+            //                await projectRepository.IsUserInProjectAsync(
+            //                    projectId,
+            //                    userId
+            //                );
 
-            if (!hasAccess)
-            {
-                throw new GraphQLException(
-                    "У вас немає доступу до цього проєкту."
-                );
-            }
+            //if (!hasAccess)
+            //{
+            //    throw new GraphQLException(
+            //        "У вас немає доступу до цього проєкту."
+            //    );
+            //}
 
             return await taskRepository.GetProjectTasksAsync(projectId);
         }
@@ -67,18 +67,18 @@ namespace TaskManager.API.GraphQL.Queries
                 throw new GraphQLException("Користувача не знайдено.");
             }
 
-            var hasAccess = currentUser.IsAdmin ||
-                            await projectRepository.IsUserInProjectAsync(
-                                task.ProjectId,
-                                userId
-                            );
+            //var hasAccess = currentUser.IsAdmin ||
+            //                await projectRepository.IsUserInProjectAsync(
+            //                    task.ProjectId,
+            //                    userId
+            //                );
 
-            if (!hasAccess)
-            {
-                throw new GraphQLException(
-                    "У вас немає доступу до цієї таски."
-                );
-            }
+            //if (!hasAccess)
+            //{
+            //    throw new GraphQLException(
+            //        "У вас немає доступу до цієї таски."
+            //    );
+            //}
 
             return task;
         }
@@ -123,18 +123,18 @@ namespace TaskManager.API.GraphQL.Queries
                 throw new GraphQLException("Користувача не знайдено.");
             }
 
-            var hasAccess = currentUser.IsAdmin ||
-                            await projectRepository.IsUserInProjectAsync(
-                                task.ProjectId,
-                                userId
-                            );
+            //var hasAccess = currentUser.IsAdmin ||
+            //                await projectRepository.IsUserInProjectAsync(
+            //                    task.ProjectId,
+            //                    userId
+            //                );
 
-            if (!hasAccess)
-            {
-                throw new GraphQLException(
-                    "У вас немає доступу до цієї таски."
-                );
-            }
+            //if (!hasAccess)
+            //{
+            //    throw new GraphQLException(
+            //        "У вас немає доступу до цієї таски."
+            //    );
+            //}
 
             return await taskRepository.GetTaskAssignmentsAsync(taskId);
         }
@@ -160,11 +160,11 @@ namespace TaskManager.API.GraphQL.Queries
             if (currentUser == null)
                 throw new GraphQLException("Користувача не знайдено");
 
-            var hasAccess = currentUser.IsAdmin 
-                || await projectRepository.IsUserInProjectAsync(projectId, userId);
+            //var hasAccess = currentUser.IsAdmin 
+            //    || await projectRepository.IsUserInProjectAsync(projectId, userId);
 
-            if (!hasAccess)
-                throw new GraphQLException("У вас немає доступу до цієї таски");
+            //if (!hasAccess)
+            //    throw new GraphQLException("У вас немає доступу до цієї таски");
 
             return await taskRepository.GetTaskWorkLogsAsync(taskId);
         }

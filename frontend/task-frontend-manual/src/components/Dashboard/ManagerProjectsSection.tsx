@@ -1,5 +1,6 @@
 import { useQuery } from "@apollo/client/react";
 import { gql } from "@apollo/client";
+import { useNavigate } from "react-router-dom";
 import { ManagerProjectDashboard } from "../../types/Dashboard";
 import { BudgetProgress } from "../ui/BudgetProgress";
 
@@ -20,6 +21,7 @@ const GET_MANAGER_PROJECTS_DASHBOARD = gql`
 `;
 
 export function ManagerProjectsSection() {
+    const navigate = useNavigate();
     const { data, loading, error } = useQuery<{ managerProjectsDashboard: ManagerProjectDashboard[] }>(GET_MANAGER_PROJECTS_DASHBOARD, {
         fetchPolicy: "network-only",
     });
@@ -58,6 +60,7 @@ export function ManagerProjectsSection() {
                 {projects.map((project) => (
                     <div
                         key={project.id}
+                        onClick={() => navigate(`/projects/${project.id}`)}
                         className="bg-bg-card p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3"
                     >
                         <div className="flex justify-between items-start">
@@ -67,8 +70,8 @@ export function ManagerProjectsSection() {
                             </div>
 
                             <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">
-                Менеджер
-              </span>
+                                Менеджер
+                            </span>
                         </div>
 
                         <BudgetProgress usedHours={project.usedHours} budgetHours={project.budgetHours} />

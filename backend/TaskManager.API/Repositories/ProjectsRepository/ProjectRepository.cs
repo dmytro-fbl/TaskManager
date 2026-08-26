@@ -309,16 +309,20 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                SELECT COUNT(1) FROM app.project_memberships
-                WHERE project_id = @project_id AND user_id = @user_id;
+                SELECT EXISTS (
+                    SELECT 1 
+                    FROM app.projects p 
+                    LEFT JOIN app.project_memberships pm ON p.id = pm.project_id AND pm.user_id = @user_id
+                    WHERE p.id = @project_id 
+                    AND (p.owner_id = @user_id OR pm.user_id = @user_id)
+                );
             ";
 
             await using var command = new NpgsqlCommand(sql, connection);
             command.Parameters.AddWithValue("project_id", projectId);
             command.Parameters.AddWithValue("user_id", userId);
 
-            var result = (long?)await command.ExecuteScalarAsync() ?? 0;
-            return result > 0;
+            return (bool)(await command.ExecuteScalarAsync() ?? false);
         }
 
         public async Task<bool> InviteUserToProjectAsync(Guid projectId, string email, string projectRole)
@@ -641,9 +645,14 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                SELECT project_role
-                FROM app.project_memberships
-                WHERE project_id = @project_id AND user_id = @user_id;
+                SELECT 
+                    CASE 
+                        WHEN p.owner_id = @user_id THEN 'manager'
+                        ELSE pm.project_role 
+                    END
+                FROM app.projects p
+                LEFT JOIN app.project_memberships pm ON p.id = pm.project_id AND pm.user_id = @user_id
+                WHERE p.id = @project_id;
             ";
 
             await using var command = new NpgsqlCommand(sql, connection);

@@ -1,5 +1,6 @@
 import { useQuery } from "@apollo/client/react";
 import { gql } from "@apollo/client";
+import { useNavigate } from "react-router-dom";
 import { MyProjectDashboard } from "../../types/Dashboard";
 import { BudgetProgress } from "../ui/BudgetProgress";
 
@@ -18,6 +19,7 @@ const GET_MY_PROJECTS_DASHBOARD = gql`
 `;
 
 export function MyProjectsSection() {
+    const navigate = useNavigate();
     const { data, loading, error } = useQuery<{ myProjectsDashboard: MyProjectDashboard[] }>(GET_MY_PROJECTS_DASHBOARD, {
         fetchPolicy: "network-only",
     });
@@ -56,6 +58,7 @@ export function MyProjectsSection() {
                 {projects.map((project) => (
                     <div
                         key={project.id}
+                        onClick={() => navigate(`/projects/${project.id}`)}
                         className="bg-bg-card p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3"
                     >
                         <div className="flex justify-between items-start">

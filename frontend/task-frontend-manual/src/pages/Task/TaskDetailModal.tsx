@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {useQuery, useMutation} from "@apollo/client/react"
+import { gql } from "@apollo/client";
+import { useQuery, useMutation } from "@apollo/client/react";
 import {
     FiArrowLeft,
     FiClock,
@@ -10,21 +11,38 @@ import {
     FiActivity,
     FiFlag,
     FiSave,
-    FiList
+    FiList,
+    FiBriefcase
 } from "react-icons/fi";
 import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
 import { GET_PROJECT_DETAILS_FOR_TASK } from "../../graphql/queries/project/projectQuery";
-import { GET_TASK_WORKLOGS, LOG_WORK, GET_TASK_ASSIGNMENTS } from "../../graphql/queries/task/taskQueries";
+import { GET_TASK_WORKLOGS, LOG_WORK } from "../../graphql/queries/task/taskQueries";
 
 import { TaskCommentsSection } from "./TaskComment/TaskCommentsSection";
 
+interface MeResponse {
+    me: {
+        id: string;
+        isAdmin: boolean;
+    } | null;
+}
+
+const GET_ME_QUERY = gql`
+  query GetMeForTaskDetails {
+    me {
+      id
+      isAdmin
+    }
+  }
+`;
 
 type Task = {
     id: string;
     projectId: string;
     authorId: string;
-    assigneeIds: string[];
+    assigneeId?: string | null;
+    roleId?: string | null;
     statusId: string;
     title: string;
     notes?: string | null;
@@ -34,15 +52,7 @@ type Task = {
 
 type ProjectStatus = { id: string; name: string; };
 type ProjectRole = { id: string; name: string; };
-type Membership = { userId: string; user: { id: string; name: string; email: string; }; };
-
-type TaskAssignment = {
-    id: string;
-    userId: string;
-    roleId?: string | null;
-    estimatedHours: number;
-};
-
+type Membership = { userId: string; user: { name: string; }; };
 type Worklog = {
     id: string;
     userName: string;
@@ -58,11 +68,9 @@ type ProjectDetailsResponse = {
     projectRoles: ProjectRole[];
 };
 
-
 type WorklogsResponse = {
     taskWorklogs: Worklog[];
 };
-type AssignmentsResponse = { taskAssignments: TaskAssignment[]; };
 
 export const TaskDetailsPage: React.FC = () => {
     const { projectId, taskId } = useParams();
@@ -83,10 +91,8 @@ export const TaskDetailsPage: React.FC = () => {
         fetchPolicy: "network-only",
     });
 
-    const assignmentsQuery = useQuery<AssignmentsResponse>(GET_TASK_ASSIGNMENTS, {
-        variables: { taskId },
-        skip: !taskId,
-        fetchPolicy: "network-only",
+    const { data: meData } = useQuery<MeResponse>(GET_ME_QUERY, {
+        fetchPolicy: "network-only"
     });
 
     const [logWork, { loading: logging }] = useMutation(LOG_WORK);
@@ -105,15 +111,20 @@ export const TaskDetailsPage: React.FC = () => {
     }
 
     const status = projectQuery.data?.projectStatuses?.find((s) => s.id === task.statusId);
-    const roles = projectQuery.data?.projectRoles ?? [];
-    const assignments = assignmentsQuery.data?.taskAssignments ?? [];
-    
-    const assignees = projectQuery.data?.projectMemberships
-        ?.filter((m) => task.assigneeIds?.includes(m.userId))
-        .map((m) => m.user) ?? [];
+    const assignee = projectQuery.data?.projectMemberships?.find((m) => m.userId === task.assigneeId)?.user;
+    const role = projectQuery.data?.projectRoles?.find((r) => r.id === task.roleId);
 
     const worklogs = worklogsQuery.data?.taskWorklogs ?? [];
     const totalHoursLogged = worklogs.reduce((sum, item) => sum + Number(item.hoursSpent || 0), 0);
+
+    const currentUserId = meData?.me?.id;
+    const isAdmin = meData?.me?.isAdmin ?? false;
+    
+    const isMember = projectQuery.data?.projectMemberships?.some(
+        (m) => m.userId === currentUserId
+    );
+
+    const canLogWork = isAdmin || isMember;
 
     const handleLogWork = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -198,25 +209,27 @@ export const TaskDetailsPage: React.FC = () => {
                             </span>
                         </div>
 
-                        <form onSubmit={handleLogWork} className="mb-8 rounded-xl border border-blue-100 bg-blue-50/30 p-5 space-y-4">
-                            <h4 className="text-xs font-bold text-blue-900 uppercase">Записати витрачений час</h4>
-                            {formError && <div className="text-xs text-red-600 bg-red-50 p-2 rounded-md">{formError}</div>}
+                        {canLogWork && (
+                            <form onSubmit={handleLogWork} className="mb-8 rounded-xl border border-blue-100 bg-blue-50/30 p-5 space-y-4">
+                                <h4 className="text-xs font-bold text-blue-900 uppercase">Записати витрачений час</h4>
+                                {formError && <div className="text-xs text-red-600 bg-red-50 p-2 rounded-md">{formError}</div>}
 
-                            <div className="flex gap-4 items-start">
-                                <div className="w-1/3">
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Години</label>
-                                    <input type="number" step="0.1" min="0.1" value={hoursSpent} onChange={(e) => setHoursSpent(e.target.value)} placeholder="Напр: 2.5" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                                <div className="flex gap-4 items-start">
+                                    <div className="w-1/3">
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Години</label>
+                                        <input type="number" step="0.1" min="0.1" value={hoursSpent} onChange={(e) => setHoursSpent(e.target.value)} placeholder="Напр: 2.5" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                                    </div>
+                                    <div className="w-2/3">
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Що було зроблено</label>
+                                        <input type="text" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Короткий коментар..." className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                                    </div>
                                 </div>
-                                <div className="w-2/3">
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">Що було зроблено</label>
-                                    <input type="text" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Короткий коментар..." className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500" />
-                                </div>
-                            </div>
 
-                            <button type="submit" disabled={logging} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
-                                <FiSave size={16} /> {logging ? "Збереження..." : "Записати час"}
-                            </button>
-                        </form>
+                                <button type="submit" disabled={logging} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
+                                    <FiSave size={16} /> {logging ? "Збереження..." : "Записати час"}
+                                </button>
+                            </form>
+                        )}
 
                         <div className="space-y-3">
                             <h4 className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase mb-3">
@@ -245,14 +258,13 @@ export const TaskDetailsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* БЛОК КОМЕНТАРІВ */}
-                    <TaskCommentsSection 
-                        taskId={task.id} 
+                    <TaskCommentsSection
+                        taskId={task.id}
                         memberships={projectQuery.data?.projectMemberships ?? []} 
                     />
                 </div>
 
-                {/* ПРАВА БІЧНА КОЛОНКА */}
+                {/* ПРАВА БІЧНА КОЛОНКА Інформація */}
                 <div className="space-y-4 rounded-2xl bg-white p-6 border border-gray-100 shadow-sm h-fit">
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
@@ -262,39 +274,21 @@ export const TaskDetailsPage: React.FC = () => {
                     </div>
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
-                            <FiUser size={12} /> Виконавці
+                            <FiUser size={12} /> Виконавець
                         </span>
-                        <div className="text-sm font-semibold text-[#1f2937] pl-5 space-y-2 mt-2">
-                            {assignees.length > 0 ? (
-                                assignees.map((a) => {
-                                    const assignment = assignments.find(assign => assign.userId === a.id);
-                                    const role = roles.find(r => r.id === assignment?.roleId);
-
-                                    return (
-                                        <div key={a.id} className="flex items-center gap-2">
-                                            <span>{a.name}</span>
-                                            {role ? (
-                                                <span className="px-2 py-0.5 text-[12px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
-                                                    {role.name}
-                                                </span>
-                                            ) : (
-                                                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-gray-50 text-gray-500 border border-gray-200">
-                                                    Без ролі
-                                                </span>
-                                            )}
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                "Не призначено"
-                            )}
-                        </div>
+                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{assignee?.name ?? "Не призначено"}</span>
                     </div>
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
                             <FiCalendar size={12} /> Дедлайн
                         </span>
                         <span className="text-sm font-semibold text-[#1f2937] pl-5">{formatDate(task.dueDate)}</span>
+                    </div>
+                    <div>
+                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
+                            <FiBriefcase size={12} /> Роль
+                        </span>
+                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{role?.name ?? "Не вказано"}</span>
                     </div>
                 </div>
             </div>

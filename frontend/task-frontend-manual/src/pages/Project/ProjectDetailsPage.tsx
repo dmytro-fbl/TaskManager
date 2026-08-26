@@ -10,6 +10,38 @@ import { EditProjectModal } from "./components/EditProjectModel";
 
 import { GET_PROJECT_DETAILS } from "../../graphql/queries/project/projectQuery";
 
+interface MeResponse {
+    me: {
+        id: string;
+        isAdmin: boolean;
+    } | null;
+}
+
+interface ProjectMembershipsRolesResponse {
+    projectMemberships: {
+        userId: string;
+        projectRole: string;
+    }[];
+}
+
+const GET_ME_QUERY = gql`
+  query GetMeForProjectDetails {
+    me {
+      id
+      isAdmin
+    }
+  }
+`;
+
+const GET_PROJECT_MEMBERSHIPS_ROLES = gql`
+  query GetProjectMembershipsRoles($projectId: UUID!) {
+    projectMemberships(projectId: $projectId) {
+      userId
+      projectRole
+    }
+  }
+`;
+
 interface Project {
     id: string;
     title: string;
@@ -18,9 +50,9 @@ interface Project {
     deadline?: string | null;
     status: string;
     isArchived: boolean;
+    ownerId?: string; 
     createdAt: string;
 }
-
 
 export const ProjectDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -35,6 +67,29 @@ export const ProjectDetailsPage: React.FC = () => {
         skip: !id,
         fetchPolicy: "network-only",
     });
+
+    const { data: meData } = useQuery<MeResponse>(GET_ME_QUERY, { 
+        fetchPolicy: "network-only" 
+    });
+
+    const { data: membersData } = useQuery<ProjectMembershipsRolesResponse>(GET_PROJECT_MEMBERSHIPS_ROLES, {
+        variables: { projectId: id },
+        skip: !id,
+        fetchPolicy: "network-only",
+    });
+
+    const project = data?.project;
+
+    const currentUserId = meData?.me?.id;
+    const isAdmin = meData?.me?.isAdmin ?? false;
+    const isOwner = project?.ownerId === currentUserId;
+
+    const myMembership = membersData?.projectMemberships?.find(
+        (m) => m.userId === currentUserId
+    );
+    const isManager = myMembership?.projectRole === "manager";
+
+    const canEditProject = (isAdmin || isManager || isOwner) && !project?.isArchived;
 
     if (!id) {
         return (
@@ -61,8 +116,6 @@ export const ProjectDetailsPage: React.FC = () => {
             </div>
         );
     }
-
-    const project = data?.project;
 
     if (!project) {
         return (
@@ -113,7 +166,7 @@ export const ProjectDetailsPage: React.FC = () => {
                         </span>
                     </div>
 
-                    {!project.isArchived && (
+                    {canEditProject && (
                         <button
                             onClick={() => setIsEditModalOpen(true)}
                             className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
@@ -145,8 +198,7 @@ export const ProjectDetailsPage: React.FC = () => {
             <div className="space-y-6 pt-4">
                 <h2 className="text-xl font-bold text-text-main">Команда проєкту</h2>
 
-                {/* Форма додавання учасника */}
-                {!project.isArchived && (
+                {canEditProject && (
                     <AddUserToProjectForm
                         projectId={id}
                         onUserAdded={() => {
@@ -158,10 +210,11 @@ export const ProjectDetailsPage: React.FC = () => {
                 <ProjectMembersTable
                     projectId={id}
                     ref={tableRef}
+
                 />
             </div>
 
-            {project && !project.isArchived && (
+            {canEditProject && project && !project.isArchived && (
                 <EditProjectModal
                     isOpen={isEditModalOpen}
                     onClose={() => setIsEditModalOpen(false)}
