@@ -11,13 +11,12 @@ import {
     FiActivity,
     FiFlag,
     FiSave,
-    FiList,
-    FiBriefcase
+    FiList
 } from "react-icons/fi";
 import { getFriendlyErrorMessage } from "../../utils/errorHandler";
 
 import { GET_PROJECT_DETAILS_FOR_TASK } from "../../graphql/queries/project/projectQuery";
-import { GET_TASK_WORKLOGS, LOG_WORK } from "../../graphql/queries/task/taskQueries";
+import { GET_TASK_WORKLOGS, LOG_WORK, GET_TASK_ASSIGNMENTS } from "../../graphql/queries/task/taskQueries";
 
 import { TaskCommentsSection } from "./TaskComment/TaskCommentsSection";
 
@@ -41,8 +40,6 @@ type Task = {
     id: string;
     projectId: string;
     authorId: string;
-    assigneeId?: string | null;
-    roleId?: string | null;
     statusId: string;
     title: string;
     notes?: string | null;
@@ -53,6 +50,14 @@ type Task = {
 type ProjectStatus = { id: string; name: string; };
 type ProjectRole = { id: string; name: string; };
 type Membership = { userId: string; user: { name: string; }; };
+
+type TaskAssignment = {
+    id: string;
+    userId: string;
+    roleId?: string | null;
+    estimatedHours: number;
+};
+
 type Worklog = {
     id: string;
     userName: string;
@@ -70,6 +75,10 @@ type ProjectDetailsResponse = {
 
 type WorklogsResponse = {
     taskWorklogs: Worklog[];
+};
+
+type AssignmentsResponse = {
+    taskAssignments: TaskAssignment[];
 };
 
 export const TaskDetailsPage: React.FC = () => {
@@ -91,17 +100,23 @@ export const TaskDetailsPage: React.FC = () => {
         fetchPolicy: "network-only",
     });
 
+    const assignmentsQuery = useQuery<AssignmentsResponse>(GET_TASK_ASSIGNMENTS, {
+        variables: { taskId },
+        skip: !taskId,
+        fetchPolicy: "network-only",
+    });
+
     const { data: meData } = useQuery<MeResponse>(GET_ME_QUERY, {
         fetchPolicy: "network-only"
     });
 
     const [logWork, { loading: logging }] = useMutation(LOG_WORK);
 
-    if (projectQuery.loading || worklogsQuery.loading) {
+    if (projectQuery.loading || worklogsQuery.loading || assignmentsQuery.loading) {
         return <div className="p-8 text-center text-gray-500">Завантаження деталей таски...</div>;
     }
 
-    if (projectQuery.error) {
+    if (projectQuery.error || assignmentsQuery.error) {
         return <div className="p-8 text-center text-red-500">Помилка завантаження даних.</div>;
     }
 
@@ -111,8 +126,10 @@ export const TaskDetailsPage: React.FC = () => {
     }
 
     const status = projectQuery.data?.projectStatuses?.find((s) => s.id === task.statusId);
-    const assignee = projectQuery.data?.projectMemberships?.find((m) => m.userId === task.assigneeId)?.user;
-    const role = projectQuery.data?.projectRoles?.find((r) => r.id === task.roleId);
+    
+    const assignments = assignmentsQuery.data?.taskAssignments ?? [];
+    const memberships = projectQuery.data?.projectMemberships ?? [];
+    const roles = projectQuery.data?.projectRoles ?? [];
 
     const worklogs = worklogsQuery.data?.taskWorklogs ?? [];
     const totalHoursLogged = worklogs.reduce((sum, item) => sum + Number(item.hoursSpent || 0), 0);
@@ -188,7 +205,6 @@ export const TaskDetailsPage: React.FC = () => {
             <div className="grid gap-6 md:grid-cols-3">
                 {/* ЛІВА ОСНОВНА КОЛОНКА */}
                 <div className="space-y-6 md:col-span-2">
-                    {/* 1. Опис завдання */}
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <h3 className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-500 uppercase tracking-wider">
                             <FiAlignLeft size={16} /> Опис завдання
@@ -198,7 +214,6 @@ export const TaskDetailsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* 2. Трекінг часу */}
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="flex items-center gap-2 text-lg font-bold text-[#1f2937]">
@@ -260,11 +275,13 @@ export const TaskDetailsPage: React.FC = () => {
 
                     <TaskCommentsSection
                         taskId={task.id}
-                        memberships={projectQuery.data?.projectMemberships ?? []} 
+                        memberships={memberships} 
+                        currentUserId={currentUserId}
+                        canComment={canLogWork}
                     />
                 </div>
 
-                {/* ПРАВА БІЧНА КОЛОНКА Інформація */}
+                {/* ПРАВА БІЧНА КОЛОНКА */}
                 <div className="space-y-4 rounded-2xl bg-white p-6 border border-gray-100 shadow-sm h-fit">
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
@@ -272,23 +289,52 @@ export const TaskDetailsPage: React.FC = () => {
                         </span>
                         <span className="text-sm font-semibold text-[#1f2937] pl-5">{status?.name ?? "—"}</span>
                     </div>
-                    <div>
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
-                            <FiUser size={12} /> Виконавець
-                        </span>
-                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{assignee?.name ?? "Не призначено"}</span>
-                    </div>
+                    
                     <div>
                         <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
                             <FiCalendar size={12} /> Дедлайн
                         </span>
                         <span className="text-sm font-semibold text-[#1f2937] pl-5">{formatDate(task.dueDate)}</span>
                     </div>
-                    <div>
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
-                            <FiBriefcase size={12} /> Роль
+
+                    {/* БЛОК ЗІ СПИСКОМ ВСІХ ВИКОНАВЦІВ ТА РОЛЕЙ */}
+                    <div className="pt-2 border-t border-gray-100">
+                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-3">
+                            <FiUser size={12} /> Команда завдання
                         </span>
-                        <span className="text-sm font-semibold text-[#1f2937] pl-5">{role?.name ?? "Не вказано"}</span>
+                        
+                        <div className="space-y-2">
+                            {assignments.length > 0 ? (
+                                assignments.map((assignment) => {
+                                    const assignee = memberships.find((m) => m.userId === assignment.userId)?.user;
+                                    const role = roles.find((r) => r.id === assignment.roleId);
+
+                                    return (
+                                        <div key={assignment.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex flex-col gap-1.5">
+                                            <span className="text-sm font-bold text-[#1f2937]">
+                                                {assignee?.name ?? "Невідомий користувач"}
+                                            </span>
+                                            <div className="flex items-center justify-between">
+                                                {role ? (
+                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                                        {role.name}
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+                                                        Без ролі
+                                                    </span>
+                                                )}
+                                                <span className="text-xs font-medium text-gray-500">
+                                                    {assignment.estimatedHours} год
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <span className="text-sm font-semibold text-gray-400 pl-5">Не призначено</span>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

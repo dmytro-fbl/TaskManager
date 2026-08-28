@@ -19,6 +19,7 @@ type Props = {
     taskId: string;
     memberships: Membership[];
     currentUserId?: string; 
+    canComment?: boolean;
 };
 
 type TaskComment = {
@@ -46,7 +47,7 @@ type VersionsResponse = {
     taskCommentVersions: TaskCommentVersion[];
 };
 
-export const TaskCommentsSection: React.FC<Props> = ({ taskId, memberships, currentUserId }) => {
+export const TaskCommentsSection: React.FC<Props> = ({ taskId, memberships, currentUserId, canComment }) => {
     const [newComment, setNewComment] = useState("");
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [error, setError] = useState("");
