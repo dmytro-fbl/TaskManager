@@ -121,7 +121,7 @@ export default function ProjectsTab() {
                                     <p className="text-xs text-text-muted">{project.ownerEmail}</p>
                                 </td>
                                 <td className="p-4 text-sm text-text-main font-medium">
-                                    {project.budgetCap ? `$${project.budgetCap}` : '—'}
+                                    {project.budgetCap ? `${project.budgetCap} год.` : '—'}
                                 </td>
                                 <td className="p-4">
                                     {/* Плашка для статусу */}

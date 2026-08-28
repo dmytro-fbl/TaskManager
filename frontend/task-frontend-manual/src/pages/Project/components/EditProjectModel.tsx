@@ -97,7 +97,7 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
 
           <div className="flex gap-4">
             <div className="flex-1">
-              <label className="block mb-1 text-sm font-medium text-gray-700">Бюджет ($)</label>
+              <label className="block mb-1 text-sm font-medium text-gray-700">Бюджет (години)</label>
               <input
                 type="number"
                 step="0.01"
