@@ -1,4 +1,5 @@
-﻿using Npgsql;
+﻿using HotChocolate.Fusion.Rewriters;
+using Npgsql;
 using System.Data;
 using TaskManager.API.DTOs;
 using TaskManager.API.DTOs.Dashboard;
@@ -797,6 +798,74 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             throw new Exception("Не вдалося створити роль.");
         }
+        public async Task<ProjectRoleDTO> UpdateProjectRoleAsync(Guid projectId, Guid roleId, string newName)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string checkSql = @"
+                SELECT EXISTS(
+                    SELECT 1 FROM app.project_role_labels
+                    WHERE project_id = @project_id AND name = @name AND id != @role_id
+            )";
+
+            await using var checkCmd = new NpgsqlCommand(checkSql, connection);
+
+            checkCmd.Parameters.AddWithValue("project_id", projectId);
+            checkCmd.Parameters.AddWithValue("name", newName);
+            checkCmd.Parameters.AddWithValue("role_id", roleId);
+
+            var exists = (bool)(await checkCmd.ExecuteScalarAsync() ?? false);
+            if (exists)
+            {
+                throw new GraphQLException("Роль з такою назвою вже існує на цьому проекті.");
+            }
+
+
+            const string updateSql = @"
+                UPDATE app.project_role_labels
+                SET
+                    name = @name
+                WHERE id = @role_id AND project_id = @project_id
+                RETURNING id, name;";
+
+            await using var updateCmd = new NpgsqlCommand(updateSql, connection);
+
+            updateCmd.Parameters.AddWithValue("name", newName.Trim());
+            updateCmd.Parameters.AddWithValue("role_id", roleId);
+            updateCmd.Parameters.AddWithValue("project_id", projectId);
+
+            await using var reader = await updateCmd.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new ProjectRoleDTO()
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("id")),
+                    Name = reader.GetString(reader.GetOrdinal("name")),
+                };
+            }
+            throw new GraphQLException("Не вдалося оновити роль.");
+        }
+
+        public async Task<bool> DeleteProjectRoleAsync(Guid roleId, Guid projectId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                DELETE FROM app.project_role_labels
+                WHERE id = @role_id AND project_id = @project_id;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            command.Parameters.AddWithValue("role_id", roleId);
+            command.Parameters.AddWithValue("project_id", projectId);
+
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+
+            return rowsAffected > 0;
+        }
+        
 
         public async Task<IEnumerable<MyProjectDashboardDto>> GetMyProjectsWithHoursAsync(Guid userId)
         {
