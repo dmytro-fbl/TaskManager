@@ -112,7 +112,7 @@ export const CreateProjectForm: React.FC<CreateProjectFormProps> = ({ onCreated 
                 </div>
 
                 <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">Бюджет ($)</label>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Бюджет (години)</label>
                     <input
                         type="number"
                         step="0.01"

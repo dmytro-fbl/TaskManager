@@ -45,7 +45,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 Deadline = input.Deadline,
                 CreatedAt = DateTimeOffset.UtcNow,
             };
-            
+
 
             var createdProjectId = await projectRepository.CreateProjectWithOwnerAsync(newProject);
 
@@ -99,12 +99,12 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             var currentUserId = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? claimsPrincipal.FindFirst("sub")?.Value;
 
-            if(Guid.TryParse(currentUserId,out var userId))
+            if (Guid.TryParse(currentUserId, out var userId))
             {
                 var currentUser = await userRepository.GetUserByIdAsync(userId);
                 if (currentUser == null)
                     throw new GraphQLException("Даний користувач не дійсний");
-                
+
                 var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
                 if (currentProject == null || currentProject.Status == "archived")
                     throw new GraphQLException("Даний проект архівований або його не існує");
@@ -194,7 +194,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             var membership = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
             var isManager = membership != null && membership == "manager";
-            
+
             if (!currentUser.IsAdmin && !isManager)
             {
                 throw new GraphQLException("Тільки менеджер проєкту може створювати нові ролі.");
@@ -208,6 +208,63 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             {
                 throw new GraphQLException("Помилка авторизації.", ex);
             }
+        }
+
+        [Authorize]
+        public async Task<ProjectRoleDTO> UpdateProjectroleAsync(
+            Guid projectId,
+            Guid roleId,
+            string newName,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var userIdValue = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                claimsPrincipal.FindFirst("sub")?.Value;
+
+            if (!Guid.TryParse(userIdValue, out var userId))
+                throw new GraphQLException("Помилка авторизації.");
+
+            var currentUser = await userRepository.GetUserByIdAsync(userId);
+            if (string.IsNullOrWhiteSpace(newName) || newName.Trim().Length < 2)
+                throw new GraphQLException("Назва ролі має містити щонайменше 2 символи.");
+
+            var membership = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
+            var isManager = membership != null && membership == "manager";
+
+            if (currentUser == null || (!currentUser.IsAdmin && !isManager))
+                throw new GraphQLException("Тільки менеджео проекту може редагувати ролі.");
+
+            try
+            {
+                return await projectRepository.UpdateProjectRoleAsync(projectId, roleId, newName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                throw new GraphQLException(ex.Message);
+            }
+        }
+
+        [Authorize]
+        public async Task<bool> DeleteProjectRoleAsync(
+            Guid projectId,
+            Guid roleId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var userIdValue = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? claimsPrincipal.FindFirst("sub")?.Value;
+            if (!Guid.TryParse(userIdValue, out var userId)) 
+                throw new GraphQLException("Помилка авторизації.");
+
+            var currentUser = await userRepository.GetUserByIdAsync(userId);
+            var membership = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
+            var isManager = membership != null && membership == "manager";
+
+            if (currentUser == null || (!currentUser.IsAdmin && !isManager))
+                throw new GraphQLException("Тільки менеджер проєкту може видаляти ролі.");
+
+            return await projectRepository.DeleteProjectRoleAsync(roleId, projectId);
         }
     }
 }
