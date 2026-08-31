@@ -79,7 +79,7 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(0,0,0,0.2)] backdrop-blur-sm">
             <div className="w-full max-w-md p-6 bg-white rounded-xl shadow-lg">
                 <h2 className="mb-4 text-xl font-bold text-gray-800">Редагувати проєкт</h2>
 
