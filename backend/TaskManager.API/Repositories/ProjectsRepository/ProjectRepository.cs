@@ -6,6 +6,7 @@ using TaskManager.API.DTOs.Dashboard;
 using TaskManager.API.DTOs.Projects;
 using TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
+using NpgsqlTypes;
 
 namespace TaskManager.API.Repositories.ProjectsRepository
 {
@@ -109,46 +110,51 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                SELECT p.id,
-                    p.title,
-                    p.description,
-                    p.budget_cap,
-                    p.status,
-                    p.owner_id,
-                    p.is_archived,
-                    p.deadline,
-                    p.created_at,
-                    u.name,
-                    u.email
-                FROM app.projects p
-                INNER JOIN app.users u
-                ON p.owner_id = u.id;
-            ";
+        SELECT p.id,
+            p.title,
+            p.description,
+            p.budget_cap,
+            p.status,
+            p.owner_id,
+            p.is_archived,
+            p.deadline,
+            p.created_at,
+            u.name,
+            u.email
+        FROM app.projects p
+        INNER JOIN app.users u
+        ON p.owner_id = u.id;
+    ";
+
             await using var command = new NpgsqlCommand(sql, connection);
             await using var reader = await command.ExecuteReaderAsync();
 
             while (await reader.ReadAsync())
             {
+                var deadlineOrdinal = reader.GetOrdinal("deadline");
+
                 projects.Add(new AdminProjectDto
                 {
                     Id = reader.GetGuid(reader.GetOrdinal("id")),
                     Title = reader.GetString(reader.GetOrdinal("title")),
                     Description = reader.IsDBNull(reader.GetOrdinal("description"))
-                    ? null
-                    : reader.GetString(reader.GetOrdinal("description")),
+                        ? null
+                        : reader.GetString(reader.GetOrdinal("description")),
                     BudgetCap = reader.IsDBNull(reader.GetOrdinal("budget_cap"))
-                    ? null
-                    : reader.GetDecimal(reader.GetOrdinal("budget_cap")),
+                        ? null
+                        : reader.GetDecimal(reader.GetOrdinal("budget_cap")),
                     Status = reader.GetString(reader.GetOrdinal("status")),
                     OwnerId = reader.GetGuid(reader.GetOrdinal("owner_id")),
                     IsArchived = reader.GetBoolean(reader.GetOrdinal("is_archived")),
-                    Deadline = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("deadline")),
+                    Deadline = reader.IsDBNull(deadlineOrdinal)
+                        ? null
+                        : reader.GetFieldValue<DateTimeOffset>(deadlineOrdinal),
                     CreatedAt = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("created_at")),
                     OwnerName = reader.GetString(reader.GetOrdinal("name")),
                     OwnerEmail = reader.GetString(reader.GetOrdinal("email"))
-
                 });
             }
+
             return projects;
         }
 
@@ -614,31 +620,58 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             string title,
             string? description,
             decimal? budgetCap,
-            DateTimeOffset deadline)
+            DateTimeOffset? deadline)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                UPDATE app.projects
-                SET title = @title,
-                    description = @description,
-                    budget_cap= @budget_cap,
-                    deadline = @deadline,
-                    updated_at = now()
-                WHERE id = @id;
-            ";
+            UPDATE app.projects
+            SET title = @title,
+                description = @description,
+                budget_cap = @budget_cap,
+                deadline = @deadline,
+                updated_at = now()
+            WHERE id = @project_id;
+        ";
 
             await using var command = new NpgsqlCommand(sql, connection);
 
-            command.Parameters.AddWithValue("id", projectId);
+            command.Parameters.AddWithValue("project_id", projectId);
             command.Parameters.AddWithValue("title", title);
-            command.Parameters.AddWithValue("description", description ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("budget_cap", budgetCap ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("deadline", deadline);
+            command.Parameters.AddWithValue(
+                "description",
+                NpgsqlDbType.Text,
+                (object?)description ?? DBNull.Value
+            );
+            command.Parameters.AddWithValue(
+                "budget_cap",
+                NpgsqlDbType.Numeric,
+                (object?)budgetCap ?? DBNull.Value
+            );
+            command.Parameters.AddWithValue(
+                "deadline",
+                NpgsqlDbType.TimestampTz,
+                (object?)deadline ?? DBNull.Value
+            );
 
-            var rowAffected = await command.ExecuteNonQueryAsync();
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
+        }
 
-            return rowAffected > 0;
+        public async Task<bool> DeleteProjectAsync(Guid projectId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                DELETE FROM app.projects
+                WHERE id = @project_id;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            command.Parameters.AddWithValue("project_id", projectId);
+
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
         }
 
         public async Task<string?> GetUserProjectRoleAsync(Guid projectId, Guid userId)
@@ -1128,5 +1161,6 @@ namespace TaskManager.API.Repositories.ProjectsRepository
 
             return new DashboardStatsDto();
         }
+
     }
 }
