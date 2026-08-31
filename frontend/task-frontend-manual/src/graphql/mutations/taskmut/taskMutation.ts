@@ -23,11 +23,29 @@ export const ASSIGN_USER_TO_TASK = gql`
         $taskId: UUID!
         $userId: UUID!
         $estimatedHours: Decimal!
+        $roleId: UUID
     ) {
         assignUserToTask(
             taskId: $taskId
             userId: $userId
             estimatedHours: $estimatedHours
+            roleId: $roleId
+        )
+    }
+`;
+
+export const ASSIGN_USER_TO_TASK_WITH_ROLE = gql`
+    mutation AssignUserToTaskWithRole(
+        $taskId: UUID!
+        $userId: UUID!
+        $estimatedHours: Decimal!
+        $roleId: UUID
+    ) {
+        assignUserToTaskWithRole(
+            taskId: $taskId
+            userId: $userId
+            estimatedHours: $estimatedHours
+            roleId: $roleId
         )
     }
 `;

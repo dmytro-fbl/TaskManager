@@ -1,7 +1,7 @@
-import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { gql } from "@apollo/client";
-import { useQuery, useMutation } from "@apollo/client/react";
+import React, {useState} from "react";
+import {useParams, useNavigate} from "react-router-dom";
+import {gql} from "@apollo/client";
+import {useQuery, useMutation} from "@apollo/client/react";
 import {
     FiArrowLeft,
     FiClock,
@@ -11,14 +11,16 @@ import {
     FiActivity,
     FiFlag,
     FiSave,
-    FiList
+    FiList,
+    FiPlus
 } from "react-icons/fi";
-import { getFriendlyErrorMessage } from "../../utils/errorHandler";
+import {getFriendlyErrorMessage} from "../../utils/errorHandler";
 
-import { GET_PROJECT_DETAILS_FOR_TASK } from "../../graphql/queries/project/projectQuery";
-import { GET_TASK_WORKLOGS, LOG_WORK, GET_TASK_ASSIGNMENTS } from "../../graphql/queries/task/taskQueries";
+import {GET_PROJECT_DETAILS_FOR_TASK} from "../../graphql/queries/project/projectQuery";
+import {GET_TASK_WORKLOGS, LOG_WORK, GET_TASK_ASSIGNMENTS} from "../../graphql/queries/task/taskQueries";
+import {ASSIGN_USER_TO_TASK} from "../../graphql/mutations/taskmut/taskMutation";
 
-import { TaskCommentsSection } from "./TaskComment/TaskCommentsSection";
+import {TaskCommentsSection} from "./TaskComment/TaskCommentsSection";
 
 interface MeResponse {
     me: {
@@ -82,35 +84,53 @@ type AssignmentsResponse = {
 };
 
 export const TaskDetailsPage: React.FC = () => {
-    const { projectId, taskId } = useParams();
+    const {projectId, taskId} = useParams();
     const navigate = useNavigate();
 
     const [hoursSpent, setHoursSpent] = useState("");
     const [comment, setComment] = useState("");
     const [formError, setFormError] = useState("");
 
+    const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState("");
+    const [selectedRoleId, setSelectedRoleId] = useState("");
+    const [selectedHours, setSelectedHours] = useState("");
+
     const projectQuery = useQuery<ProjectDetailsResponse>(GET_PROJECT_DETAILS_FOR_TASK, {
-        variables: { projectId },
+        variables: {projectId},
         skip: !projectId,
     });
 
     const worklogsQuery = useQuery<WorklogsResponse>(GET_TASK_WORKLOGS, {
-        variables: { taskId },
+        variables: {taskId},
         skip: !taskId,
         fetchPolicy: "network-only",
     });
 
     const assignmentsQuery = useQuery<AssignmentsResponse>(GET_TASK_ASSIGNMENTS, {
-        variables: { taskId },
+        variables: {taskId},
         skip: !taskId,
         fetchPolicy: "network-only",
     });
 
-    const { data: meData } = useQuery<MeResponse>(GET_ME_QUERY, {
+    const {data: meData} = useQuery<MeResponse>(GET_ME_QUERY, {
         fetchPolicy: "network-only"
     });
 
-    const [logWork, { loading: logging }] = useMutation(LOG_WORK);
+    const [logWork, {loading: logging}] = useMutation(LOG_WORK);
+
+    const [assignUserToTask, {loading: assigning}] = useMutation(ASSIGN_USER_TO_TASK, {
+        onCompleted: () => {
+            setIsAddMemberOpen(false);
+            setSelectedUserId("");
+            setSelectedRoleId("");
+            setSelectedHours("");
+            assignmentsQuery.refetch();
+        },
+        onError: (err) => {
+            alert(getFriendlyErrorMessage(err) ?? "Не вдалося додати учасника");
+        }
+    });
 
     if (projectQuery.loading || worklogsQuery.loading || assignmentsQuery.loading) {
         return <div className="p-8 text-center text-gray-500">Завантаження деталей таски...</div>;
@@ -126,7 +146,7 @@ export const TaskDetailsPage: React.FC = () => {
     }
 
     const status = projectQuery.data?.projectStatuses?.find((s) => s.id === task.statusId);
-    
+
     const assignments = assignmentsQuery.data?.taskAssignments ?? [];
     const memberships = projectQuery.data?.projectMemberships ?? [];
     const roles = projectQuery.data?.projectRoles ?? [];
@@ -136,7 +156,7 @@ export const TaskDetailsPage: React.FC = () => {
 
     const currentUserId = meData?.me?.id;
     const isAdmin = meData?.me?.isAdmin ?? false;
-    
+
     const isMember = projectQuery.data?.projectMemberships?.some(
         (m) => m.userId === currentUserId
     );
@@ -172,6 +192,23 @@ export const TaskDetailsPage: React.FC = () => {
         }
     };
 
+    const handleAddMember = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedUserId || !selectedHours) {
+            alert("Оберіть користувача і вкажіть години");
+            return;
+        }
+
+        await assignUserToTask({
+            variables: {
+                taskId: task.id,
+                userId: selectedUserId,
+                estimatedHours: Number(selectedHours),
+                roleId: selectedRoleId || null,
+            },
+        });
+    };
+
     function formatDate(value?: string | null): string {
         if (!value) return "—";
         return new Date(value).toLocaleDateString("uk-UA");
@@ -190,13 +227,15 @@ export const TaskDetailsPage: React.FC = () => {
                 onClick={() => navigate(`/projects/${projectId}`)}
                 className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-blue-600 transition"
             >
-                <FiArrowLeft size={16} /> Назад до проєкту
+                <FiArrowLeft size={16}/> Назад до проєкту
             </button>
 
-            <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div
+                className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                 <div className="space-y-2">
-                    <span className="flex w-fit items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 uppercase">
-                        <FiFlag size={12} /> {task.priority}
+                    <span
+                        className="flex w-fit items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 uppercase">
+                        <FiFlag size={12}/> {task.priority}
                     </span>
                     <h1 className="text-2xl font-bold text-[#1f2937]">{task.title}</h1>
                 </div>
@@ -207,9 +246,10 @@ export const TaskDetailsPage: React.FC = () => {
                 <div className="space-y-6 md:col-span-2">
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <h3 className="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-500 uppercase tracking-wider">
-                            <FiAlignLeft size={16} /> Опис завдання
+                            <FiAlignLeft size={16}/> Опис завдання
                         </h3>
-                        <div className="rounded-xl bg-gray-50/50 p-4 text-sm text-[#374151] leading-relaxed min-h-[100px] border border-gray-100">
+                        <div
+                            className="rounded-xl bg-gray-50/50 p-4 text-sm text-[#374151] leading-relaxed min-h-[100px] border border-gray-100">
                             {task.notes?.trim() ? task.notes : "Опис відсутній."}
                         </div>
                     </div>
@@ -217,38 +257,47 @@ export const TaskDetailsPage: React.FC = () => {
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-6">
                             <h3 className="flex items-center gap-2 text-lg font-bold text-[#1f2937]">
-                                <FiClock className="text-blue-600" size={20} /> Трекінг часу
+                                <FiClock className="text-blue-600" size={20}/> Трекінг часу
                             </h3>
-                            <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                            <span
+                                className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
                                 Всього: {totalHoursLogged.toFixed(1)} год
                             </span>
                         </div>
 
                         {canLogWork && (
-                            <form onSubmit={handleLogWork} className="mb-8 rounded-xl border border-blue-100 bg-blue-50/30 p-5 space-y-4">
+                            <form onSubmit={handleLogWork}
+                                  className="mb-8 rounded-xl border border-blue-100 bg-blue-50/30 p-5 space-y-4">
                                 <h4 className="text-xs font-bold text-blue-900 uppercase">Записати витрачений час</h4>
-                                {formError && <div className="text-xs text-red-600 bg-red-50 p-2 rounded-md">{formError}</div>}
+                                {formError &&
+                                    <div className="text-xs text-red-600 bg-red-50 p-2 rounded-md">{formError}</div>}
 
                                 <div className="flex gap-4 items-start">
                                     <div className="w-1/3">
                                         <label className="block text-xs font-medium text-gray-700 mb-1">Години</label>
-                                        <input type="number" step="0.1" min="0.1" value={hoursSpent} onChange={(e) => setHoursSpent(e.target.value)} placeholder="Напр: 2.5" className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                                        <input type="number" step="0.1" min="0.1" value={hoursSpent}
+                                               onChange={(e) => setHoursSpent(e.target.value)} placeholder="Напр: 2.5"
+                                               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"/>
                                     </div>
                                     <div className="w-2/3">
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">Що було зроблено</label>
-                                        <input type="text" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Короткий коментар..." className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Що було
+                                            зроблено</label>
+                                        <input type="text" value={comment} onChange={(e) => setComment(e.target.value)}
+                                               placeholder="Короткий коментар..."
+                                               className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"/>
                                     </div>
                                 </div>
 
-                                <button type="submit" disabled={logging} className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
-                                    <FiSave size={16} /> {logging ? "Збереження..." : "Записати час"}
+                                <button type="submit" disabled={logging}
+                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
+                                    <FiSave size={16}/> {logging ? "Збереження..." : "Записати час"}
                                 </button>
                             </form>
                         )}
 
                         <div className="space-y-3">
                             <h4 className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase mb-3">
-                                <FiList size={14} /> Історія роботи
+                                <FiList size={14}/> Історія роботи
                             </h4>
                             {worklogsQuery.loading ? (
                                 <div className="text-sm text-gray-400">Завантаження...</div>
@@ -257,13 +306,16 @@ export const TaskDetailsPage: React.FC = () => {
                             ) : (
                                 <div className="divide-y divide-gray-100 rounded-xl border border-gray-100">
                                     {worklogs.map((log) => (
-                                        <div key={log.id} className="p-4 flex justify-between items-start hover:bg-gray-50/50 transition">
+                                        <div key={log.id}
+                                             className="p-4 flex justify-between items-start hover:bg-gray-50/50 transition">
                                             <div className="space-y-1">
                                                 <div className="font-semibold text-[#1f2937]">{log.userName}</div>
                                                 <p className="text-sm text-gray-600">{log.comment || "Без коментаря."}</p>
-                                                <div className="text-xs text-gray-400">{formatDateTime(log.logDate)}</div>
+                                                <div
+                                                    className="text-xs text-gray-400">{formatDateTime(log.logDate)}</div>
                                             </div>
-                                            <span className="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded text-sm">
+                                            <span
+                                                className="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded text-sm">
                                                 +{Number(log.hoursSpent).toFixed(1)} год
                                             </span>
                                         </div>
@@ -275,7 +327,7 @@ export const TaskDetailsPage: React.FC = () => {
 
                     <TaskCommentsSection
                         taskId={task.id}
-                        memberships={memberships} 
+                        memberships={memberships}
                         currentUserId={currentUserId}
                         canComment={canLogWork}
                     />
@@ -284,25 +336,37 @@ export const TaskDetailsPage: React.FC = () => {
                 {/* ПРАВА БІЧНА КОЛОНКА */}
                 <div className="space-y-4 rounded-2xl bg-white p-6 border border-gray-100 shadow-sm h-fit">
                     <div>
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
-                            <FiActivity size={12} /> Статус
+                        <span
+                            className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
+                            <FiActivity size={12}/> Статус
                         </span>
                         <span className="text-sm font-semibold text-[#1f2937] pl-5">{status?.name ?? "—"}</span>
                     </div>
-                    
+
                     <div>
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
-                            <FiCalendar size={12} /> Дедлайн
+                        <span
+                            className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-1">
+                            <FiCalendar size={12}/> Дедлайн
                         </span>
                         <span className="text-sm font-semibold text-[#1f2937] pl-5">{formatDate(task.dueDate)}</span>
                     </div>
 
                     {/* БЛОК ЗІ СПИСКОМ ВСІХ ВИКОНАВЦІВ ТА РОЛЕЙ */}
                     <div className="pt-2 border-t border-gray-100">
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-3">
-                            <FiUser size={12} /> Команда завдання
+                        <span
+                            className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-3">
+                            <FiUser size={12}/> Команда завдання
                         </span>
-                        
+
+                        {canLogWork && (
+                            <button
+                                onClick={() => setIsAddMemberOpen(true)}
+                                className="w-full mb-3 flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+                            >
+                                <FiPlus size={14}/> Додати учасника
+                            </button>
+                        )}
+
                         <div className="space-y-2">
                             {assignments.length > 0 ? (
                                 assignments.map((assignment) => {
@@ -310,17 +374,20 @@ export const TaskDetailsPage: React.FC = () => {
                                     const role = roles.find((r) => r.id === assignment.roleId);
 
                                     return (
-                                        <div key={assignment.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex flex-col gap-1.5">
+                                        <div key={assignment.id}
+                                             className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex flex-col gap-1.5">
                                             <span className="text-sm font-bold text-[#1f2937]">
                                                 {assignee?.name ?? "Невідомий користувач"}
                                             </span>
                                             <div className="flex items-center justify-between">
                                                 {role ? (
-                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
+                                                    <span
+                                                        className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700 border border-blue-100">
                                                         {role.name}
                                                     </span>
                                                 ) : (
-                                                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+                                                    <span
+                                                        className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-gray-100 text-gray-500 border border-gray-200">
                                                         Без ролі
                                                     </span>
                                                 )}
@@ -335,6 +402,68 @@ export const TaskDetailsPage: React.FC = () => {
                                 <span className="text-sm font-semibold text-gray-400 pl-5">Не призначено</span>
                             )}
                         </div>
+
+                        {isAddMemberOpen && (
+                            <form onSubmit={handleAddMember}
+                                  className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100 space-y-3">
+                                <h4 className="text-xs font-bold text-blue-900 uppercase">Додати учасника</h4>
+
+                                <select
+                                    value={selectedUserId}
+                                    onChange={(e) => setSelectedUserId(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                    required
+                                >
+                                    <option value="">Оберіть користувача</option>
+                                    {memberships.map((m) => (
+                                        <option key={m.userId} value={m.userId}>
+                                            {m.user.name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <select
+                                    value={selectedRoleId}
+                                    onChange={(e) => setSelectedRoleId(e.target.value)}
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                >
+                                    <option value="">Без ролі</option>
+                                    {roles.map((r) => (
+                                        <option key={r.id} value={r.id}>
+                                            {r.name}
+                                        </option>
+                                    ))}
+                                </select>
+
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0.1"
+                                    value={selectedHours}
+                                    onChange={(e) => setSelectedHours(e.target.value)}
+                                    placeholder="Години (напр: 2.5)"
+                                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+                                    required
+                                />
+
+                                <div className="flex gap-2">
+                                    <button
+                                        type="submit"
+                                        disabled={assigning}
+                                        className="flex-1 px-3 py-2 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                        {assigning ? "Збереження..." : "Додати"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddMemberOpen(false)}
+                                        className="flex-1 px-3 py-2 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
+                                    >
+                                        Скасувати
+                                    </button>
+                                </div>
+                            </form>
+                        )}
                     </div>
                 </div>
             </div>
