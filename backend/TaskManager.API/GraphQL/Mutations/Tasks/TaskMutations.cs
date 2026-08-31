@@ -237,6 +237,11 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (string.IsNullOrWhiteSpace(input.Title) || input.Title.Trim().Length < 2)
                 throw new GraphQLException("Назва таски має містити щонайменше 2 символи.");
 
+            if (input.EstimatedBudget.HasValue && input.EstimatedBudget < 0)
+                throw new GraphQLException("Бюджет не може бути від'ємним.");
+
+            if (input.EstimatedBudget.HasValue && input.EstimatedBudget > 1000000)
+                throw new GraphQLException("Бюджет перевищує максимально допустиме значення.");
 
             var allowedPriorities = new[] { "low", "medium", "high", "critical" };
             if (!allowedPriorities.Contains(input.Priority.Trim().ToLowerInvariant()))
