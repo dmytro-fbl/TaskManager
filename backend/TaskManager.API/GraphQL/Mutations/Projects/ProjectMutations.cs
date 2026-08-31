@@ -91,7 +91,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             string title,
             string? description,
             decimal? budgetCap,
-            DateTimeOffset deadline,
+            DateTimeOffset? deadline,
             ClaimsPrincipal claimsPrincipal,
             [Service] IProjectRepository projectRepository,
             [Service] IUserRepository userRepository)

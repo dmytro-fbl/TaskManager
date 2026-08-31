@@ -6,6 +6,7 @@ using TaskManager.API.DTOs.Dashboard;
 using TaskManager.API.DTOs.Projects;
 using TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
+using NpgsqlTypes;
 
 namespace TaskManager.API.Repositories.ProjectsRepository
 {
@@ -614,31 +615,42 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             string title,
             string? description,
             decimal? budgetCap,
-            DateTimeOffset deadline)
+            DateTimeOffset? deadline)
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
 
             const string sql = @"
-                UPDATE app.projects
-                SET title = @title,
-                    description = @description,
-                    budget_cap= @budget_cap,
-                    deadline = @deadline,
-                    updated_at = now()
-                WHERE id = @id;
-            ";
+            UPDATE app.projects
+            SET title = @title,
+                description = @description,
+                budget_cap = @budget_cap,
+                deadline = @deadline,
+                updated_at = now()
+            WHERE id = @project_id;
+        ";
 
             await using var command = new NpgsqlCommand(sql, connection);
 
-            command.Parameters.AddWithValue("id", projectId);
+            command.Parameters.AddWithValue("project_id", projectId);
             command.Parameters.AddWithValue("title", title);
-            command.Parameters.AddWithValue("description", description ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("budget_cap", budgetCap ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("deadline", deadline);
+            command.Parameters.AddWithValue(
+                "description",
+                NpgsqlDbType.Text,
+                (object?)description ?? DBNull.Value
+            );
+            command.Parameters.AddWithValue(
+                "budget_cap",
+                NpgsqlDbType.Numeric,
+                (object?)budgetCap ?? DBNull.Value
+            );
+            command.Parameters.AddWithValue(
+                "deadline",
+                NpgsqlDbType.TimestampTz,
+                (object?)deadline ?? DBNull.Value
+            );
 
-            var rowAffected = await command.ExecuteNonQueryAsync();
-
-            return rowAffected > 0;
+            var rowsAffected = await command.ExecuteNonQueryAsync();
+            return rowsAffected > 0;
         }
 
         public async Task<string?> GetUserProjectRoleAsync(Guid projectId, Guid userId)
