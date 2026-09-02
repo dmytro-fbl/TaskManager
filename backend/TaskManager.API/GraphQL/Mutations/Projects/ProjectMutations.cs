@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using HotChocolate.Authorization;
 using TaskManager.API.DTOs.Projects;
 using TaskManager.API.Models.ProjectsTables;
@@ -240,6 +240,37 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 return await projectRepository.UpdateProjectRoleAsync(projectId, roleId, newName);
             }
             catch (InvalidOperationException ex)
+            {
+                throw new GraphQLException(ex.Message);
+            }
+        }
+
+        [Authorize]
+        public async Task<bool> DeleteProjectRoleAsync(
+            Guid projectId,
+            Guid roleId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var userIdValue = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                claimsPrincipal.FindFirst("sub")?.Value;
+
+            if (!Guid.TryParse(userIdValue, out var userId))
+                throw new GraphQLException("Помилка авторизації.");
+
+            var currentUser = await userRepository.GetUserByIdAsync(userId);
+            var membership = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
+            var isManager = membership != null && membership == "manager";
+
+            if (currentUser == null || (!currentUser.IsAdmin && !isManager))
+                throw new GraphQLException("Тільки менеджер або адмін може видаляти ролі.");
+
+            try
+            {
+                return await projectRepository.DeleteProjectRoleAsync(roleId, projectId);
+            }
+            catch (Exception ex)
             {
                 throw new GraphQLException(ex.Message);
             }
