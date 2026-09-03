@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.Web;
 using Npgsql;
 using TaskManager.API.Models;
 
@@ -16,11 +16,10 @@ namespace TaskManager.API.Repositories
         {
             await using var connection = await _dataSource.OpenConnectionAsync();
             const string sql = @"
-                INSERT INTO app.users (name, email,  invite_token, invite_expires_at, is_admin, is_active, 
+                INSERT INTO app.users (name, email, invite_token, invite_expires_at, is_admin, is_active, 
                                         refresh_token, refresh_token_expiry_time) 
                 VALUES (@name, @email, @invite_token, @invite_expires_at, @is_admin, @is_active,
-                        @refresh_token, @refresh_token_expiry_time) 
-)
+                        @refresh_token, @refresh_token_expiry_time);
             ";
 
             await using var command = new NpgsqlCommand(sql, connection);
