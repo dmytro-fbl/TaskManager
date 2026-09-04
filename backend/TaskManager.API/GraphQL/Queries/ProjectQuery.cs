@@ -23,12 +23,13 @@ namespace TaskManager.API.GraphQL.Queries
 
             if (!Guid.TryParse(userIdString, out var userId))
             {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
+                throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
             }
 
             return await projectRepository.GetUserProjectsAsync(userId);
         }
 
+        [Authorize]
         public async Task<Project?> GetProjectAsync(
             Guid id,
             ClaimsPrincipal claimsPrincipal,
@@ -40,17 +41,16 @@ namespace TaskManager.API.GraphQL.Queries
 
             if (Guid.TryParse(userIdString, out var userId))
             {
-                //var isUserInProject = await projectRepository.IsUserInProjectAsync(id, userId);
                 var currentUser = await userRepository.GetUserByIdAsync(userId);
                 if (currentUser == null)
                 {
-                    throw new GraphQLException("Даного користувача не існує");
+                    throw new GraphQLException("РљРѕСЂРёСЃС‚СѓРІР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ.");
                 }
 
                 return await projectRepository.GetProjectByIdAsync(id);
             }
 
-            throw new GraphQLException("Не вдалось авторизувати користувача.");
+            throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
         }
 
         [Authorize]
@@ -65,18 +65,17 @@ namespace TaskManager.API.GraphQL.Queries
 
             if (Guid.TryParse(userIdString, out var userId))
             {
-                var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, userId);
                 var currentUser = await userRepository.GetUserByIdAsync(userId);
 
                 if (currentUser == null)
                 {
-                    throw new GraphQLException("Даного користувача не існує");
+                    throw new GraphQLException("РљРѕСЂРёСЃС‚СѓРІР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ.");
                 }
 
                 return await projectRepository.GetProjectMembersAsync(projectId);
             }
 
-            throw new GraphQLException("Не вдалось авторизувати користувача.");
+            throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
         }
 
         [Authorize]
@@ -95,19 +94,13 @@ namespace TaskManager.API.GraphQL.Queries
 
                 if (currentUser == null)
                 {
-                    throw new GraphQLException("Даного користувача не існує");
+                    throw new GraphQLException("РљРѕСЂРёСЃС‚СѓРІР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ.");
                 }
-
-                //var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, userId);
-                //if (!isUserInProject && !currentUser.IsAdmin)
-                //{
-                //    throw new GraphQLException("У вас немає доступу до цього проекту.");
-                //}
 
                 return await projectRepository.GetProjectMembershipsAsync(projectId);
             }
 
-            throw new GraphQLException("Не вдалось авторизувати користувача.");
+            throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
         }
 
         [Authorize]
@@ -122,11 +115,11 @@ namespace TaskManager.API.GraphQL.Queries
                 var currentUser = await userRepository.GetUserByIdAsync(userId);
                 if (currentUser == null || !currentUser.IsAdmin)
                 {
-                    throw new GraphQLException("Доступ заборонено.");
+                    throw new GraphQLException("Р”РѕСЃС‚СѓРї Р·Р°Р±РѕСЂРѕРЅРµРЅРѕ.");
                 }
                 return await projectRepository.GetAllProjectAsync();
             }
-            throw new GraphQLException("Неавторизований запит");
+            throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
         }
 
         [Authorize]
@@ -142,23 +135,15 @@ namespace TaskManager.API.GraphQL.Queries
 
             if (!Guid.TryParse(userIdValue, out var userId))
             {
-                throw new GraphQLException("Не вдалося авторизувати користувача.");
+                throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
             }
 
             var currentUser = await userRepository.GetUserByIdAsync(userId);
 
             if (currentUser == null)
             {
-                throw new GraphQLException("Користувача не знайдено.");
+                throw new GraphQLException("РљРѕСЂРёСЃС‚СѓРІР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ.");
             }
-
-            //var hasAccess = currentUser.IsAdmin ||
-            //                await projectRepository.IsUserInProjectAsync(projectId, userId);
-
-            //if (!hasAccess)
-            //{
-            //    throw new GraphQLException("У вас немає доступу до цього проєкту.");
-            //}
 
             return await projectRepository.GetProjectStatusesAsync(projectId);
         }
@@ -174,18 +159,12 @@ namespace TaskManager.API.GraphQL.Queries
                               ?? claimsPrincipal.FindFirst("sub")?.Value;
 
             if (!Guid.TryParse(userIdValue, out var userId))
-                throw new GraphQLException("Помилка авторизації.");
+                throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
 
             var currentUser = await userRepository.GetUserByIdAsync(userId);
 
             if (currentUser == null)
-                throw new GraphQLException("Користувача не знайдено.");
-
-            //var hasAccess = currentUser.IsAdmin ||
-            //                await projectRepository.IsUserInProjectAsync(projectId, userId);
-
-            //if (!hasAccess)
-            //    throw new GraphQLException("У вас немає доступу до цього проекту.");
+                throw new GraphQLException("РљРѕСЂРёСЃС‚СѓРІР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ.");
 
             return await projectRepository.GetProjectRolesAsync(projectId);
         }

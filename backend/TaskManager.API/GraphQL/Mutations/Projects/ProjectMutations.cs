@@ -46,7 +46,6 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 CreatedAt = DateTimeOffset.UtcNow,
             };
 
-
             var createdProjectId = await projectRepository.CreateProjectWithOwnerAsync(newProject);
 
             var createdProject = await projectRepository.GetProjectByIdAsync(createdProjectId);
@@ -70,18 +69,18 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 var currentUser = await userRepository.GetUserByIdAsync(userId);
                 if (currentUser == null || !currentUser.IsAdmin)
                 {
-                    throw new GraphQLException("доступ заборонено!");
+                    throw new GraphQLException("Доступ заборонено!");
                 }
 
                 var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
                 if (currentProject == null)
                 {
-                    throw new GraphQLException("Даний проект не знайдено.");
+                    throw new GraphQLException("Проєкт не знайдено.");
                 }
                 return await projectRepository.ToggleArchiveProjectAsync(projectId, isArchived);
             }
 
-            throw new GraphQLException("Помилка авторизації");
+            throw new GraphQLException("Не вдалося авторизувати користувача.");
         }
 
 
@@ -103,22 +102,22 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             {
                 var currentUser = await userRepository.GetUserByIdAsync(userId);
                 if (currentUser == null)
-                    throw new GraphQLException("Даний користувач не дійсний");
+                    throw new GraphQLException("Поточного користувача не знайдено.");
 
                 var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
                 if (currentProject == null || currentProject.Status == "archived")
-                    throw new GraphQLException("Даний проект архівований або його не існує");
+                    throw new GraphQLException("Цей проєкт архівний або не знайдений.");
 
                 var userRole = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
 
                 bool hasAccess = currentUser.IsAdmin || currentProject.OwnerId == userId || userRole == "manager";
 
                 if (!hasAccess)
-                    throw new GraphQLException("У вас немає прав на редагування цього проекту.");
+                    throw new GraphQLException("У вас немає прав на редагування цього проєкту.");
 
                 return await projectRepository.UpdateProjectAsync(projectId, title, description, budgetCap, deadline);
             }
-            throw new GraphQLException("Помилка авторизації.");
+            throw new GraphQLException("Не вдалося авторизувати користувача.");
         }
 
         [Authorize]
@@ -137,30 +136,30 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             {
                 var currentUser = await userRepository.GetUserByIdAsync(currentUserId);
                 if (currentUser == null)
-                    throw new GraphQLException("Даний користувач не дійсний");
+                    throw new GraphQLException("Поточного користувача не знайдено.");
 
                 var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
 
                 if (currentProject == null || currentProject.Status == "archived" || currentProject.IsArchived)
-                    throw new GraphQLException("Даний проект архівований або його не існує");
+                    throw new GraphQLException("Цей проєкт архівний або не знайдений.");
 
                 if (currentProject.OwnerId == memberUserId)
-                    throw new GraphQLException("Неможливо вилучити власника проєкту з команди.");
+                    throw new GraphQLException("Не можна видалити власника проєкту.");
 
                 var userRole = await projectRepository.GetUserProjectRoleAsync(projectId, currentUserId);
                 bool hasAccess = currentUser.IsAdmin || currentProject.OwnerId == currentUserId || userRole == "manager";
 
                 if (!hasAccess)
-                    throw new GraphQLException("У вас немає прав для видалення учасників з цього проєкту.");
+                    throw new GraphQLException("У вас немає прав на видалення учасників з цього проєкту.");
 
                 bool hasTasks = await taskRepository.HasUserTasksInProjectAsync(projectId, memberUserId);
                 if (hasTasks)
-                    throw new GraphQLException("Неможливо вилучити користувача, оскільки на нього призначені завдання або він є їх автором у цьому проєкті.");
+                    throw new GraphQLException("Неможливо видалити користувача, оскільки на нього призначені завдання або є витрачений час у цьому проєкті.");
 
                 return await projectRepository.RemoveMemberAsync(projectId, memberUserId);
             }
 
-            throw new GraphQLException("Помилка авторизації.");
+            throw new GraphQLException("Не вдалося авторизувати користувача.");
         }
 
         [Authorize]
@@ -185,11 +184,11 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             }
             var currentUser = await userRepository.GetUserByIdAsync(userId);
             if (currentUser == null)
-                throw new GraphQLException("Даний користувач не дійсний");
+                throw new GraphQLException("Поточного користувача не знайдено.");
 
             if (string.IsNullOrWhiteSpace(name) || name.Trim().Length < 2)
             {
-                throw new GraphQLException("Назва ролі має містити щонайменше 2 символи.");
+                throw new GraphQLException("Назва ролі має містити більше 2 символів.");
             }
 
             var membership = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
@@ -197,7 +196,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             if (!currentUser.IsAdmin && !isManager)
             {
-                throw new GraphQLException("Тільки менеджер проєкту може створювати нові ролі.");
+                throw new GraphQLException("Тільки адміністратор або менеджер може створювати кастомні ролі.");
             }
 
             try
@@ -206,7 +205,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             }
             catch (InvalidOperationException ex)
             {
-                throw new GraphQLException("Помилка авторизації.", ex);
+                throw new GraphQLException(ex.Message, ex);
             }
         }
 
@@ -223,17 +222,17 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 claimsPrincipal.FindFirst("sub")?.Value;
 
             if (!Guid.TryParse(userIdValue, out var userId))
-                throw new GraphQLException("Помилка авторизації.");
+                throw new GraphQLException("Не вдалося авторизувати користувача.");
 
             var currentUser = await userRepository.GetUserByIdAsync(userId);
             if (string.IsNullOrWhiteSpace(newName) || newName.Trim().Length < 2)
-                throw new GraphQLException("Назва ролі має містити щонайменше 2 символи.");
+                throw new GraphQLException("Назва ролі має містити більше 2 символів.");
 
             var membership = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
             var isManager = membership != null && membership == "manager";
 
             if (currentUser == null || (!currentUser.IsAdmin && !isManager))
-                throw new GraphQLException("Тільки менеджео проекту може редагувати ролі.");
+                throw new GraphQLException("Тільки менеджер проєкту або адміністратор може редагувати ролі.");
 
             try
             {
@@ -246,22 +245,53 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
         }
 
         [Authorize]
+        public async Task<bool> DeleteProjectRoleAsync(
+            Guid projectId,
+            Guid roleId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var userIdValue = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
+                claimsPrincipal.FindFirst("sub")?.Value;
+
+            if (!Guid.TryParse(userIdValue, out var userId))
+                throw new GraphQLException("Не вдалося авторизувати користувача.");
+
+            var currentUser = await userRepository.GetUserByIdAsync(userId);
+            var membership = await projectRepository.GetUserProjectRoleAsync(projectId, userId);
+            var isManager = membership != null && membership == "manager";
+
+            if (currentUser == null || (!currentUser.IsAdmin && !isManager))
+                throw new GraphQLException("Тільки менеджер проєкту або адміністратор може видаляти ролі.");
+
+            try
+            {
+                return await projectRepository.DeleteProjectRoleAsync(roleId, projectId);
+            }
+            catch (Exception ex)
+            {
+                throw new GraphQLException(ex.Message);
+            }
+        }
+
+        [Authorize]
         public async Task<bool> DeleteProjectAsync(
-    Guid projectId,
-    ClaimsPrincipal claimsPrincipal,
-    [Service] IProjectRepository projectRepository,
-    [Service] IUserRepository userRepository)
+            Guid projectId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] IProjectRepository projectRepository,
+            [Service] IUserRepository userRepository)
         {
             var userIdValue = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? claimsPrincipal.FindFirst("sub")?.Value;
 
             if (!Guid.TryParse(userIdValue, out var userId))
-                throw new GraphQLException("Помилка авторизації.");
+                throw new GraphQLException("Не вдалося авторизувати користувача.");
 
             var currentUser = await userRepository.GetUserByIdAsync(userId);
 
             if (currentUser == null || !currentUser.IsAdmin)
-                throw new GraphQLException("Тільки адміністратор може видаляти проєкти.");
+                throw new GraphQLException("Тільки адміністратор може видаляти проєкт.");
 
             var project = await projectRepository.GetProjectByIdAsync(projectId);
 

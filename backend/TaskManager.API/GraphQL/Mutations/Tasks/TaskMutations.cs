@@ -45,7 +45,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (!hasProjectAccess)
             {
                 throw new GraphQLException(
-                    "У вас немає доступу до цього проєкту."
+                    "У вас немає доступу до створення завдань у цьому проєкті."
                 );
             }
 
@@ -53,7 +53,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 input.Title.Trim().Length < 2)
             {
                 throw new GraphQLException(
-                    "Назва таски має містити щонайменше 2 символи."
+                    "Назва таски має бути довшою за 2 символи."
                 );
             }
 
@@ -89,7 +89,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (!statusExists)
             {
                 throw new GraphQLException(
-                    "Вибраний статус не належить цьому проєкту."
+                    "Обраний статус не існує в цьому проєкті."
                 );
             }
 
@@ -98,7 +98,6 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 ProjectId = input.ProjectId,
                 AuthorId = userId,
                 StatusId = input.StatusId,
-                //RoleId = input.RoleId,
                 Title = input.Title.Trim(),
                 Notes = input.Notes?.Trim(),
                 Priority = priority,
@@ -126,7 +125,18 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IProjectRepository projectRepository,
             [Service] IUserRepository userRepository)
         {
-            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var userIdValue =
+                claimsPrincipal.FindFirst(
+                    ClaimTypes.NameIdentifier
+                )?.Value ??
+                claimsPrincipal.FindFirst("sub")?.Value;
+
+            if (!Guid.TryParse(userIdValue, out var currentUserId))
+            {
+                throw new GraphQLException(
+                    "Не вдалося авторизувати користувача."
+                );
+            }
 
             var currentUser = await userRepository.GetUserByIdAsync(
                 currentUserId
@@ -154,12 +164,12 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                     currentUserId
                 );
 
-            //if (!hasAccess)
-            //{
-            //    throw new GraphQLException(
-            //        "У вас немає доступу до цієї таски."
-            //    );
-            //}
+            if (!hasAccess)
+            {
+                throw new GraphQLException(
+                    "Тільки учасники проєкту або адміністратори можуть змінювати статус завдання."
+                );
+            }
 
             var statusExists = await taskRepository.IsProjectStatusAsync(
                 task.ProjectId,
@@ -169,7 +179,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (!statusExists)
             {
                 throw new GraphQLException(
-                    "Вибраний статус не належить цьому проєкту."
+                    "Обраний статус не існує в цьому проєкті."
                 );
             }
 
@@ -187,9 +197,10 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             return await taskRepository.GetTaskByIdAsync(taskId)
                 ?? throw new GraphQLException(
-                    "Статус оновлено, але таску не вдалося отримати."
+                    "Не вдалося отримати оновлену таску."
                 );
         }
+
         private static Guid GetCurrentUserId(
             ClaimsPrincipal claimsPrincipal)
         {
@@ -217,25 +228,24 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IProjectRepository projectRepository,
             [Service] IUserRepository userRepository)
         {
-            var currentUserId = GetCurrentUserId( claimsPrincipal );
+            var currentUserId = GetCurrentUserId(claimsPrincipal);
 
             var existingTask = await taskRepository.GetTaskByIdAsync(input.TaskId);
 
             if (existingTask == null)
-                throw new GraphQLException("Таску не знайдено");
-            
+                throw new GraphQLException("Таску не знайдено.");
 
             var currentUser = await userRepository.GetUserByIdAsync(currentUserId);
             if (currentUser == null)
-                throw new GraphQLException("Користувача не знайдено");
+                throw new GraphQLException("Користувача не знайдено.");
 
             var hasAccess = currentUser.IsAdmin || await projectRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
 
             if (!hasAccess)
-                throw new GraphQLException("У вас немає доступу до редагування цієї таски");
+                throw new GraphQLException("У вас немає доступу до редагування цієї таски.");
 
             if (string.IsNullOrWhiteSpace(input.Title) || input.Title.Trim().Length < 2)
-                throw new GraphQLException("Назва таски має містити щонайменше 2 символи.");
+                throw new GraphQLException("Назва таски має бути довшою за 2 символи.");
 
             if (input.EstimatedBudget.HasValue && input.EstimatedBudget < 0)
                 throw new GraphQLException("Бюджет не може бути від'ємним.");
@@ -247,7 +257,6 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (!allowedPriorities.Contains(input.Priority.Trim().ToLowerInvariant()))
                 throw new GraphQLException("Невірний пріоритет таски.");
 
-
             if (input.StartDate.HasValue && input.DueDate.HasValue && input.DueDate < input.StartDate)
                 throw new GraphQLException("Дата завершення не може бути раніше дати початку.");
 
@@ -257,8 +266,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 throw new GraphQLException("Не вдалося оновити таску.");
 
             return await taskRepository.GetTaskByIdAsync(input.TaskId)
-                   ?? throw new GraphQLException("Таску оновлено, але не вдалося отримати дані.");
-
+                   ?? throw new GraphQLException("Таска оновлена, але не вдалося отримати актуальні дані.");
         }
 
         [Authorize]
@@ -270,7 +278,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IProjectRepository projectRepository)
         {
             if (input.HoursSpent <= 0)
-                throw new GraphQLException("Не коректний час.");
+                throw new GraphQLException("Вкажіть коректний час.");
 
             var currentUserId = GetCurrentUserId(claimsPrincipal);
             var user = await userRepository.GetUserByIdAsync(currentUserId);
@@ -282,10 +290,9 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 throw new GraphQLException("Таску не знайдено.");
             var hasAccess = user.IsAdmin || await projectRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
             if (!hasAccess)
-                throw new GraphQLException("У вас не має доступу до цієї таски.");
+                throw new GraphQLException("У вас немає доступу до цієї таски.");
 
             return await taskRepository.AddWorkLogAsync(currentUserId, input);
-
         }
 
         [Authorize]
@@ -317,7 +324,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (!hasProjectAccess)
             {
                 throw new GraphQLException(
-                    "У вас немає доступу до проєкту цієї таски."
+                    "У вас немає прав на видалення цієї таски."
                 );
             }
 

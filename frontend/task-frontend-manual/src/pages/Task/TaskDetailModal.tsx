@@ -12,7 +12,11 @@ import {
     FiFlag,
     FiSave,
     FiList,
-    FiPlus
+    FiPlus,
+    FiTrash2,
+    FiEdit2,
+    FiCheck,
+    FiX
 } from "react-icons/fi";
 import {getFriendlyErrorMessage} from "../../utils/errorHandler";
 
@@ -37,6 +41,58 @@ const GET_ME_QUERY = gql`
     }
   }
 `;
+
+const CREATE_PROJECT_ROLE_MUTATION = gql`
+    mutation CreateProjectRole($projectId: UUID!, $name: String!) {
+        createProjectRole(projectId: $projectId, name: $name) {
+            id
+            name
+        }
+    }
+`;
+
+const UPDATE_PROJECT_ROLE_MUTATION = gql`
+    mutation UpdateProjectRole($projectId: UUID!, $roleId: UUID!, $newName: String!) {
+        updateProjectrole(projectId: $projectId, roleId: $roleId, newName: $newName) {
+            id
+            name
+        }
+    }
+`;
+
+const DELETE_PROJECT_ROLE_MUTATION = gql`
+    mutation DeleteProjectRole($projectId: UUID!, $roleId: UUID!) {
+        deleteProjectRole(projectId: $projectId, roleId: $roleId)
+    }
+`;
+
+type CreateProjectRoleResponse = {
+    createProjectRole: { id: string; name: string; } | null;
+};
+
+type CreateProjectRoleVariables = {
+    projectId: string;
+    name: string;
+};
+
+type UpdateProjectRoleResponse = {
+    updateProjectrole: { id: string; name: string; } | null;
+};
+
+type UpdateProjectRoleVariables = {
+    projectId: string;
+    roleId: string;
+    newName: string;
+};
+
+type DeleteProjectRoleResponse = {
+    deleteProjectRole: boolean;
+};
+
+type DeleteProjectRoleVariables = {
+    projectId: string;
+    roleId: string;
+};
 
 type Task = {
     id: string;
@@ -96,6 +152,12 @@ export const TaskDetailsPage: React.FC = () => {
     const [selectedRoleId, setSelectedRoleId] = useState("");
     const [selectedHours, setSelectedHours] = useState("");
 
+    const [isAddingRole, setIsAddingRole] = useState(false);
+    const [newRoleName, setNewRoleName] = useState("");
+    const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+    const [editingRoleName, setEditingRoleName] = useState("");
+    const [roleError, setRoleError] = useState("");
+
     const projectQuery = useQuery<ProjectDetailsResponse>(GET_PROJECT_DETAILS_FOR_TASK, {
         variables: {projectId},
         skip: !projectId,
@@ -130,6 +192,16 @@ export const TaskDetailsPage: React.FC = () => {
         onError: (err) => {
             alert(getFriendlyErrorMessage(err) ?? "Не вдалося додати учасника");
         }
+    });
+
+    const [createRole, { loading: creatingRole }] = useMutation<CreateProjectRoleResponse, CreateProjectRoleVariables>(CREATE_PROJECT_ROLE_MUTATION, {
+        refetchQueries: [{ query: GET_PROJECT_DETAILS_FOR_TASK, variables: { projectId } }]
+    });
+    const [updateRole, { loading: updatingRole }] = useMutation<UpdateProjectRoleResponse, UpdateProjectRoleVariables>(UPDATE_PROJECT_ROLE_MUTATION, {
+        refetchQueries: [{ query: GET_PROJECT_DETAILS_FOR_TASK, variables: { projectId } }]
+    });
+    const [deleteRole, { loading: deletingRole }] = useMutation<DeleteProjectRoleResponse, DeleteProjectRoleVariables>(DELETE_PROJECT_ROLE_MUTATION, {
+        refetchQueries: [{ query: GET_PROJECT_DETAILS_FOR_TASK, variables: { projectId } }]
     });
 
     if (projectQuery.loading || worklogsQuery.loading || assignmentsQuery.loading) {
@@ -207,6 +279,91 @@ export const TaskDetailsPage: React.FC = () => {
                 roleId: selectedRoleId || null,
             },
         });
+    };
+
+    const handleCreateCustomRole = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        setRoleError("");
+        if (!projectId || !newRoleName.trim()) return;
+
+        try {
+            const res = await createRole({ variables: { projectId, name: newRoleName.trim() } });
+            const createdId = res.data?.createProjectRole?.id;
+            if (createdId) {
+                setSelectedRoleId(createdId);
+            }
+            setNewRoleName("");
+            setIsAddingRole(false);
+        } catch (err: any) {
+            setRoleError(getFriendlyErrorMessage(err) ?? err.message ?? "Не вдалося створити роль.");
+        }
+    };
+
+    const handleStartEditRole = (role: ProjectRole) => {
+        setIsAddingRole(false);
+        setEditingRoleId(role.id);
+        setEditingRoleName(role.name);
+        setRoleError("");
+    };
+
+    const handleCancelEditRole = () => {
+        setEditingRoleId(null);
+        setEditingRoleName("");
+        setRoleError("");
+    };
+
+    const handleUpdateCustomRole = async (roleId: string) => {
+        setRoleError("");
+        if (!projectId) return;
+        const trimmed = editingRoleName.trim();
+        if (!trimmed) {
+            setRoleError("Назва ролі не може бути порожньою.");
+            return;
+        }
+        if (trimmed.length < 2) {
+            setRoleError("Назва ролі повинна містити щонайменше 2 символи.");
+            return;
+        }
+
+        try {
+            await updateRole({
+                variables: {
+                    projectId,
+                    roleId,
+                    newName: trimmed,
+                }
+            });
+            setEditingRoleId(null);
+            setEditingRoleName("");
+        } catch (err: any) {
+            setRoleError(getFriendlyErrorMessage(err) ?? err.message ?? "Не вдалося оновити роль.");
+        }
+    };
+
+    const handleDeleteCustomRole = async (role: ProjectRole) => {
+        setRoleError("");
+        if (!projectId) return;
+        if (!window.confirm(`Ви дійсно бажаєте видалити роль "${role.name}"?`)) {
+            return;
+        }
+
+        try {
+            await deleteRole({
+                variables: {
+                    projectId,
+                    roleId: role.id,
+                }
+            });
+            if (selectedRoleId === role.id) {
+                setSelectedRoleId("");
+            }
+            if (editingRoleId === role.id) {
+                setEditingRoleId(null);
+                setEditingRoleName("");
+            }
+        } catch (err: any) {
+            setRoleError(getFriendlyErrorMessage(err) ?? err.message ?? "Не вдалося видалити роль.");
+        }
     };
 
     function formatDate(value?: string | null): string {
@@ -435,6 +592,169 @@ export const TaskDetailsPage: React.FC = () => {
                                     ))}
                                 </select>
 
+                                {/* Керування кастомними ролями */}
+                                <div className="rounded-xl border border-blue-200/80 bg-white p-3 space-y-3 shadow-xs">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                            Ролі проєкту ({roles.length})
+                                        </span>
+                                        {!isAddingRole && !editingRoleId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => { setIsAddingRole(true); setEditingRoleId(null); setRoleError(""); }}
+                                                className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 transition"
+                                            >
+                                                <FiPlus size={13} /> Нова роль
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Форма додавання ролі */}
+                                    {isAddingRole && (
+                                        <div className="flex flex-col gap-2 p-2.5 bg-blue-50/80 rounded-xl border border-blue-200">
+                                            <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider">
+                                                Створення ролі
+                                            </span>
+                                            <input
+                                                type="text"
+                                                value={newRoleName}
+                                                onChange={(e) => setNewRoleName(e.target.value)}
+                                                placeholder="Назва ролі (напр. QA)"
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-400"
+                                                maxLength={50}
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        handleCreateCustomRole(e as any);
+                                                    } else if (e.key === "Escape") {
+                                                        setIsAddingRole(false);
+                                                        setRoleError("");
+                                                        setNewRoleName("");
+                                                    }
+                                                }}
+                                            />
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCreateCustomRole}
+                                                    disabled={creatingRole || !newRoleName.trim()}
+                                                    className="flex-1 rounded-lg bg-blue-600 py-1.5 px-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50 transition"
+                                                >
+                                                    {creatingRole ? "..." : "Зберегти"}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setIsAddingRole(false); setRoleError(""); setNewRoleName(""); }}
+                                                    className="rounded-lg border border-gray-300 bg-white py-1.5 px-3 text-xs font-medium text-gray-600 hover:bg-gray-50 transition"
+                                                >
+                                                    Скасувати
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Форма редагування ролі */}
+                                    {editingRoleId && (
+                                        <div className="flex flex-col gap-2 p-2.5 bg-amber-50/80 rounded-xl border border-amber-200">
+                                            <span className="text-[10px] font-bold text-amber-900 uppercase tracking-wider">
+                                                Редагувати роль
+                                            </span>
+                                            <input
+                                                type="text"
+                                                value={editingRoleName}
+                                                onChange={(e) => setEditingRoleName(e.target.value)}
+                                                placeholder="Нова назва ролі"
+                                                className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-400"
+                                                maxLength={50}
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        handleUpdateCustomRole(editingRoleId);
+                                                    } else if (e.key === "Escape") {
+                                                        handleCancelEditRole();
+                                                    }
+                                                }}
+                                            />
+                                            <div className="flex items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleUpdateCustomRole(editingRoleId)}
+                                                    disabled={updatingRole || !editingRoleName.trim()}
+                                                    className="flex-1 rounded-lg bg-amber-600 py-1.5 px-2 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50 transition"
+                                                >
+                                                    {updatingRole ? "..." : "Оновити"}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCancelEditRole}
+                                                    className="rounded-lg border border-gray-300 bg-white py-1.5 px-3 text-xs font-medium text-gray-600 hover:bg-gray-50 transition"
+                                                >
+                                                    Скасувати
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {roleError && (
+                                        <div className="text-xs text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
+                                            {roleError}
+                                        </div>
+                                    )}
+
+                                    {roles.length === 0 ? (
+                                        <p className="text-[11px] text-gray-400 italic">Кастомних ролей ще немає.</p>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {roles.map((r) => {
+                                                const isSelected = selectedRoleId === r.id;
+                                                const isEditing = editingRoleId === r.id;
+                                                return (
+                                                    <div
+                                                        key={r.id}
+                                                        className={`flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition ${
+                                                            isEditing
+                                                                ? "border-amber-400 bg-amber-50 text-amber-900 ring-1 ring-amber-300"
+                                                                : isSelected
+                                                                ? "border-blue-500 bg-blue-50 text-blue-800 ring-1 ring-blue-300"
+                                                                : "border-gray-200 bg-gray-50/80 text-gray-700 hover:bg-gray-100"
+                                                        }`}
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedRoleId(isSelected ? "" : r.id)}
+                                                            className="text-left font-medium hover:underline"
+                                                            title={isSelected ? "Зняти вибір" : "Обрати цю роль"}
+                                                        >
+                                                            {r.name}
+                                                        </button>
+                                                        <div className="flex items-center gap-0.5 border-l border-gray-300/70 pl-1 ml-0.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleStartEditRole(r)}
+                                                                className="text-gray-400 hover:text-blue-600 p-0.5 transition rounded hover:bg-white"
+                                                                title="Редагувати назву"
+                                                            >
+                                                                <FiEdit2 size={11} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteCustomRole(r)}
+                                                                disabled={deletingRole}
+                                                                className="text-gray-400 hover:text-red-600 p-0.5 transition rounded hover:bg-white"
+                                                                title="Видалити роль"
+                                                            >
+                                                                <FiTrash2 size={11} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <input
                                     type="number"
                                     step="0.1"
@@ -456,7 +776,12 @@ export const TaskDetailsPage: React.FC = () => {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => setIsAddMemberOpen(false)}
+                                        onClick={() => {
+                                            setIsAddMemberOpen(false);
+                                            setIsAddingRole(false);
+                                            setEditingRoleId(null);
+                                            setRoleError("");
+                                        }}
                                         className="flex-1 px-3 py-2 text-xs font-semibold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
                                     >
                                         Скасувати
