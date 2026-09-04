@@ -1,4 +1,4 @@
-using System.Security.Claims;
+п»їusing System.Security.Claims;
 using HotChocolate;
 using HotChocolate.Authorization;
 using TaskManager.API.Repositories;
@@ -23,12 +23,12 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             if (!Guid.TryParse(userIdString, out var inviterUserId))
             {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
+                throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
             }
 
             if (string.IsNullOrWhiteSpace(email))
             {
-                throw new GraphQLException("Email не може бути порожнім.");
+                throw new GraphQLException("Email РЅРµ РјРѕР¶Рµ Р±СѓС‚Рё РїРѕСЂРѕР¶РЅС–Рј.");
             }
 
             email = email.Trim().ToLowerInvariant();
@@ -40,13 +40,13 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             if (projectRole is not ("manager" or "contributor"))
             {
-                throw new GraphQLException("Невірна роль проекту.");
+                throw new GraphQLException("РќРµРІС–СЂРЅР° СЂРѕР»СЊ Сѓ РїСЂРѕС”РєС‚С–. Р”РѕР·РІРѕР»РµРЅС–: manager Р°Р±Рѕ contributor.");
             }
 
             var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, inviterUserId);
             if (!isUserInProject)
             {
-                throw new GraphQLException("У вас немає прав для додавання користувачів до цього проекту.");
+                throw new GraphQLException("РЈ РІР°СЃ РЅРµРјР°С” РїСЂР°РІ Р·Р°РїСЂРѕС€СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡С–РІ РґРѕ С†СЊРѕРіРѕ РїСЂРѕС”РєС‚Сѓ.");
             }
 
             var result = await projectRepository.CreateProjectInvitationForExistingUserAsync(
@@ -59,7 +59,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             if (!result)
             {
-                throw new GraphQLException("Не вдалося створити запрошення.");
+                throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ СЃС‚РІРѕСЂРёС‚Рё Р·Р°РїСЂРѕС€РµРЅРЅСЏ.");
             }
 
             return true;
@@ -76,13 +76,13 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             if (!Guid.TryParse(userIdString, out var currentUserId))
             {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
+                throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
             }
 
             var success = await projectRepository.AcceptProjectInvitationAsync(token, currentUserId);
             if (!success)
             {
-                throw new GraphQLException("Запрошення недійсне або протерміноване.");
+                throw new GraphQLException("Р—Р°РїСЂРѕС€РµРЅРЅСЏ РЅРµРґС–Р№СЃРЅРµ Р°Р±Рѕ С‚РµСЂРјС–РЅ Р№РѕРіРѕ РґС–С— РјРёРЅСѓРІ.");
             }
 
             return true;
@@ -104,7 +104,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             {
                 if (string.IsNullOrWhiteSpace(email))
                 {
-                    throw new GraphQLException("Email не може бути порожнім.");
+                    throw new GraphQLException("Email РЅРµ РјРѕР¶Рµ Р±СѓС‚Рё РїРѕСЂРѕР¶РЅС–Рј.");
                 }
 
                 email = email.Trim().ToLowerInvariant();
@@ -116,18 +116,18 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
                 if (projectRole is not ("manager" or "contributor"))
                 {
-                    throw new GraphQLException("Невірна роль проєкту.");
+                    throw new GraphQLException("РќРµРІС–СЂРЅР° СЂРѕР»СЊ Сѓ РїСЂРѕС”РєС‚С–. Р”РѕР·РІРѕР»РµРЅС–: manager Р°Р±Рѕ contributor.");
                 }
 
                 var currentUser = await userRepository.GetUserByIdAsync(inviterUserId);
                 if (currentUser == null)
                 {
-                    throw new GraphQLException("Даний користувач не дійсний.");
+                    throw new GraphQLException("РџРѕС‚РѕС‡РЅРѕРіРѕ РєРѕСЂРёСЃС‚СѓРІР°С‡Р° РЅРµ Р·РЅР°Р№РґРµРЅРѕ.");
                 }
                 var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, inviterUserId);
                 if (!isUserInProject && !currentUser.IsAdmin)
                 {
-                    throw new GraphQLException("У вас немає прав для додавання користувачів до цього проєкту.");
+                    throw new GraphQLException("РўС–Р»СЊРєРё Р°РґРјС–РЅС–СЃС‚СЂР°С‚РѕСЂ Р°Р±Рѕ СѓС‡Р°СЃРЅРёРє РїСЂРѕС”РєС‚Сѓ РјРѕР¶Рµ РґРѕРґР°РІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡С–РІ.");
                 }
 
                 var result = await projectRepository.InviteUserToProjectAsync(projectId, email, projectRole);
@@ -135,7 +135,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 return result;
             }
 
-            throw new GraphQLException("Не вдалось авторизувати користувача.");
+            throw new GraphQLException("РќРµ РІРґР°Р»РѕСЃСЏ Р°РІС‚РѕСЂРёР·СѓРІР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р°.");
         }
     }
 }

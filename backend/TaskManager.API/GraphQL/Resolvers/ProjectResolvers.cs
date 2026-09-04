@@ -1,4 +1,4 @@
-using TaskManager.API.Models;
+п»їusing TaskManager.API.Models;
 using TaskManager.API.Models.ProjectsTables;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
@@ -9,7 +9,7 @@ namespace TaskManager.API.GraphQL.Resolvers
     public class ProjectExtensions
     {
         /// <summary>
-        /// Отримати власника проекту
+        /// РћС‚СЂРёРјР°С‚Рё РІР»Р°СЃРЅРёРєР° РїСЂРѕС”РєС‚Сѓ
         /// </summary>
         public async Task<User?> GetOwner(
             [Parent] Project project,
@@ -19,7 +19,7 @@ namespace TaskManager.API.GraphQL.Resolvers
         }
 
         /// <summary>
-        /// Отримати членів проекту
+        /// РћС‚СЂРёРјР°С‚Рё СЃРїРёСЃРѕРє СѓС‡Р°СЃРЅРёРєС–РІ РїСЂРѕС”РєС‚Сѓ
         /// </summary>
         public async Task<IEnumerable<User>> GetMembers(
             [Parent] Project project,
@@ -29,7 +29,7 @@ namespace TaskManager.API.GraphQL.Resolvers
         }
 
         /// <summary>
-        /// Отримати членства в проекті
+        /// РћС‚СЂРёРјР°С‚Рё С‡Р»РµРЅСЃС‚РІРѕ РІ РїСЂРѕС”РєС‚С–
         /// </summary>
         public async Task<IEnumerable<ProjectMembership>> GetMemberships(
             [Parent] Project project,
@@ -43,7 +43,7 @@ namespace TaskManager.API.GraphQL.Resolvers
     public class ProjectMembershipExtensions
     {
         /// <summary>
-        /// Отримати користувача за членством
+        /// РћС‚СЂРёРјР°С‚Рё РєРѕСЂРёСЃС‚СѓРІР°С‡Р° Р·Р° С‡Р»РµРЅСЃС‚РІРѕРј
         /// </summary>
         public async Task<User?> GetUser(
             [Parent] ProjectMembership membership,
@@ -53,7 +53,7 @@ namespace TaskManager.API.GraphQL.Resolvers
         }
 
         /// <summary>
-        /// Отримати проект за членством
+        /// РћС‚СЂРёРјР°С‚Рё РїСЂРѕС”РєС‚ Р·Р° С‡Р»РµРЅСЃС‚РІРѕРј
         /// </summary>
         public async Task<Project?> GetProject(
             [Parent] ProjectMembership membership,
