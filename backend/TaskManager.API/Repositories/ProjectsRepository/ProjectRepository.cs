@@ -1,4 +1,4 @@
-﻿using HotChocolate.Fusion.Rewriters;
+using HotChocolate.Fusion.Rewriters;
 using Npgsql;
 using System.Data;
 using TaskManager.API.DTOs;
@@ -922,7 +922,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
         WHERE pm.user_id = @user_id
           AND p.is_archived = false
         GROUP BY
-            p.id, p.title, p.description, p.budget_cap, p.status, pm.project_role
+            p.id, p.title, p.description, p.budget_cap, p.status, pm.project_role, p.created_at
         ORDER BY p.created_at DESC;
     ";
 
@@ -1070,8 +1070,8 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                         Id = projectId,
                         Title = reader.GetString(reader.GetOrdinal("title")),
                         Status = reader.GetString(reader.GetOrdinal("status")),
-                        BudgetHours = reader.GetDecimal(reader.GetOrdinal("budget_hours")),
-                        UsedHours = reader.GetDecimal(reader.GetOrdinal("used_hours")),
+                        BudgetHours = reader.IsDBNull(reader.GetOrdinal("budget_hours")) ? 0 : reader.GetDecimal(reader.GetOrdinal("budget_hours")),
+                        UsedHours = reader.IsDBNull(reader.GetOrdinal("used_hours")) ? 0 : reader.GetDecimal(reader.GetOrdinal("used_hours")),
                         RolesHours = new List<RoleHoursDto>()
                     };
 
@@ -1135,9 +1135,9 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             COUNT(*) AS total_projects,
             COALESCE(SUM(budget_hours), 0) AS total_budget_hours,
             COALESCE(SUM(used_hours), 0) AS total_used_hours,
-            SUM(CASE WHEN budget_status = 'on_track' THEN 1 ELSE 0 END) AS projects_on_track,
-            SUM(CASE WHEN budget_status = 'at_risk' THEN 1 ELSE 0 END) AS projects_at_risk,
-            SUM(CASE WHEN budget_status = 'over_budget' THEN 1 ELSE 0 END) AS projects_over_budget
+            COALESCE(SUM(CASE WHEN budget_status = 'on_track' THEN 1 ELSE 0 END), 0) AS projects_on_track,
+            COALESCE(SUM(CASE WHEN budget_status = 'at_risk' THEN 1 ELSE 0 END), 0) AS projects_at_risk,
+            COALESCE(SUM(CASE WHEN budget_status = 'over_budget' THEN 1 ELSE 0 END), 0) AS projects_over_budget
         FROM project_stats;
     ";
 

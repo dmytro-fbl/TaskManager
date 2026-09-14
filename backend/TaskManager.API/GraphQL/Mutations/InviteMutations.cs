@@ -1,6 +1,4 @@
-using HotChocolate.Authorization;
-using System.Security.Claims;
-using TaskManager.API.Repositories;
+﻿using TaskManager.API.Repositories;
 using TaskManager.API.Utils;
 
 namespace TaskManager.API.GraphQL.Mutations
@@ -8,32 +6,13 @@ namespace TaskManager.API.GraphQL.Mutations
     [ExtendObjectType(OperationTypeNames.Mutation)]
     public class InviteMutations
     {
-        [Authorize]
-        public async Task<string> GenerateInviteAsync(
-            string email, 
-            bool isAdmin,
-            ClaimsPrincipal claimsPrincipal,
+        public async Task<string> GenerateInviteAsync(string email, bool isAdmin,
             [Service] IUserRepository userRepository)
         {
-            var userIdValue = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
-                              claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdValue, out var currentUserId))
-            {
-                throw new GraphQLException("Помилка авторизації.");
-            }
-
-            var currentUser = await userRepository.GetUserByIdAsync(currentUserId);
-            if (currentUser == null || !currentUser.IsAdmin)
-            {
-                throw new GraphQLException("Доступ заборонено. Тільки адміністратор може генерувати запрошення.");
-            }
-
             try
             {
                 return await userRepository.GenerateInviteAsync(email, isAdmin);
-            }
-            catch (Exception ex)
+            }catch (Exception ex)
             {
                 throw new GraphQLException($"Помилка беку: {ex.Message}");
             }
