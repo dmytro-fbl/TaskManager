@@ -1,4 +1,4 @@
-﻿using TaskManager.API.DTOs.Tasks;
+using TaskManager.API.DTOs.Tasks;
 using TaskManager.API.Models.TasksTables;
 
 namespace TaskManager.API.Repositories.TasksRepository
@@ -25,6 +25,9 @@ namespace TaskManager.API.Repositories.TasksRepository
         Task<bool> UpdateTaskAsync(UpdateTaskInput input);
 
         Task<bool> AddWorkLogAsync(Guid userId, WorkLogInput input);
+        Task<WorkLogDTO?> GetWorkLogByIdAsync(Guid workLogId);
+        Task<bool> UpdateWorkLogAsync(Guid workLogId, decimal hoursSpent, string? comment);
+        Task<bool> DeleteWorkLogAsync(Guid workLogId);
         Task<IEnumerable<WorkLogDTO>> GetTaskWorkLogsAsync(Guid taskId);
         Task<bool> DeleteTaskAsync(Guid taskId);
         Task<bool> HasWorkLogsAsync(Guid taskId);

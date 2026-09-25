@@ -33,6 +33,18 @@ export const LOG_WORK = gql`
     }
 `;
 
+export const UPDATE_WORKLOG = gql`
+    mutation UpdateWorkLog($input: UpdateWorkLogInput!) {
+        updateWorkLog(input: $input)
+    }
+`;
+
+export const DELETE_WORKLOG = gql`
+    mutation DeleteWorkLog($workLogId: UUID!) {
+        deleteWorkLog(workLogId: $workLogId)
+    }
+`;
+
 export const GET_TASK_ASSIGNMENTS = gql`
     query GetTaskAssignments($taskId: UUID!) {
         taskAssignments(taskId: $taskId) {
