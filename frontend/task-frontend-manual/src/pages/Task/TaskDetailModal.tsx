@@ -225,6 +225,11 @@ export const TaskDetailsPage: React.FC = () => {
 
     const worklogs = worklogsQuery.data?.taskWorklogs ?? [];
     const totalHoursLogged = worklogs.reduce((sum, item) => sum + Number(item.hoursSpent || 0), 0);
+    const totalEstimatedHours = assignments.reduce((sum, item) => sum + Number(item.estimatedHours || 0), 0);
+    const progressPercent = totalEstimatedHours > 0 ? (totalHoursLogged / totalEstimatedHours) * 100 : 0;
+    const clampedPercent = Math.min(100, Math.max(0, progressPercent));
+    const isOverBudget = totalEstimatedHours > 0 && totalHoursLogged > totalEstimatedHours;
+    const remainingHours = totalEstimatedHours > 0 ? totalEstimatedHours - totalHoursLogged : 0;
 
     const currentUserId = meData?.me?.id;
     const isAdmin = meData?.me?.isAdmin ?? false;
@@ -412,14 +417,88 @@ export const TaskDetailsPage: React.FC = () => {
                     </div>
 
                     <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
+                        <div className="flex items-center justify-between mb-4">
                             <h3 className="flex items-center gap-2 text-lg font-bold text-[#1f2937]">
                                 <FiClock className="text-blue-600" size={20}/> Трекінг часу
                             </h3>
-                            <span
-                                className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                                Всього: {totalHoursLogged.toFixed(1)} год
-                            </span>
+                            {totalEstimatedHours > 0 ? (
+                                <span
+                                    className={`text-xs font-semibold px-3 py-1 rounded-full border ${
+                                        progressPercent > 100
+                                            ? "bg-red-50 text-red-700 border-red-200"
+                                            : progressPercent >= 80
+                                            ? "bg-yellow-50 text-yellow-800 border-yellow-200"
+                                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    }`}
+                                >
+                                    {progressPercent > 100
+                                        ? `Перевищено (${progressPercent.toFixed(1)}%)`
+                                        : `${progressPercent.toFixed(1)}% використано`}
+                                </span>
+                            ) : (
+                                <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                    Всього: {totalHoursLogged.toFixed(1)} год
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Блок зведеної інформації по годинах */}
+                        <div className="mb-6 rounded-xl bg-gray-50/80 p-4 border border-gray-100">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
+                                <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-xs">
+                                    <span className="text-xs font-medium text-gray-500 block mb-1">Виділено на таску</span>
+                                    <span className="text-base font-bold text-[#1f2937]">
+                                        {totalEstimatedHours > 0 ? `${totalEstimatedHours.toFixed(1)} год` : "—"}
+                                    </span>
+                                </div>
+
+                                <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-xs">
+                                    <span className="text-xs font-medium text-gray-500 block mb-1">Використано</span>
+                                    <span className={`text-base font-bold ${isOverBudget ? "text-red-600" : "text-[#1f2937]"}`}>
+                                        {totalHoursLogged.toFixed(1)} год
+                                    </span>
+                                </div>
+
+                                <div className="bg-white p-3 rounded-lg border border-gray-100 shadow-xs col-span-2 sm:col-span-1">
+                                    <span className="text-xs font-medium text-gray-500 block mb-1">
+                                        {isOverBudget ? "Перевищення" : "Залишок"}
+                                    </span>
+                                    <span className={`text-base font-bold ${
+                                        totalEstimatedHours === 0
+                                            ? "text-gray-400"
+                                            : isOverBudget
+                                            ? "text-red-600"
+                                            : "text-emerald-600"
+                                    }`}>
+                                        {totalEstimatedHours > 0
+                                            ? isOverBudget
+                                                ? `+${Math.abs(remainingHours).toFixed(1)} год`
+                                                : `${remainingHours.toFixed(1)} год`
+                                            : "—"}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {totalEstimatedHours > 0 && (
+                                <div className="space-y-1.5 pt-1">
+                                    <div className="flex justify-between text-xs text-gray-500 font-medium">
+                                        <span>Прогрес виконання</span>
+                                        <span>{totalHoursLogged.toFixed(1)} / {totalEstimatedHours.toFixed(1)} год</span>
+                                    </div>
+                                    <div className="h-2.5 w-full bg-gray-200 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all duration-300 ${
+                                                progressPercent > 100
+                                                    ? "bg-red-500"
+                                                    : progressPercent >= 80
+                                                    ? "bg-yellow-500"
+                                                    : "bg-emerald-500"
+                                            }`}
+                                            style={{ width: `${clampedPercent}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {canLogWork && (
@@ -510,10 +589,17 @@ export const TaskDetailsPage: React.FC = () => {
 
                     {/* БЛОК ЗІ СПИСКОМ ВСІХ ВИКОНАВЦІВ ТА РОЛЕЙ */}
                     <div className="pt-2 border-t border-gray-100">
-                        <span
-                            className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase mb-3">
-                            <FiUser size={12}/> Команда завдання
-                        </span>
+                        <div className="flex items-center justify-between mb-3">
+                            <span
+                                className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-400 uppercase">
+                                <FiUser size={12}/> Команда завдання
+                            </span>
+                            {totalEstimatedHours > 0 && (
+                                <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">
+                                    Виділено: {totalEstimatedHours.toFixed(1)} год
+                                </span>
+                            )}
+                        </div>
 
                         {canLogWork && (
                             <button
