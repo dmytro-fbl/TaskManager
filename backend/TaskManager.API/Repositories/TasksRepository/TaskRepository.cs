@@ -1,4 +1,4 @@
-﻿using Npgsql;
+using Npgsql;
 using TaskManager.API.DTOs.Tasks;
 using TaskManager.API.Models.TasksTables;
 
@@ -317,6 +317,80 @@ namespace TaskManager.API.Repositories.TasksRepository
             AddParameter(command, "log_date", DateTimeOffset.UtcNow);
             AddParameter(command, "description", string.IsNullOrWhiteSpace(input.Comment) ? null : input.Comment.Trim());
             AddParameter(command, "created_at", DateTimeOffset.UtcNow);
+
+            return await command.ExecuteNonQueryAsync() > 0;
+        }
+
+        public async Task<WorkLogDTO?> GetWorkLogByIdAsync(Guid workLogId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                SELECT
+                    w.id AS work_id,
+                    w.task_id,
+                    w.user_id,
+                    w.hours_spent,
+                    w.log_date,
+                    w.description
+                FROM app.worklogs w
+                WHERE w.id = @id;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            AddParameter(command, "id", workLogId);
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new WorkLogDTO
+                {
+                    Id = reader.GetGuid(reader.GetOrdinal("work_id")),
+                    TaskId = reader.GetGuid(reader.GetOrdinal("task_id")),
+                    UserId = reader.GetGuid(reader.GetOrdinal("user_id")),
+                    HoursSpent = reader.GetDecimal(reader.GetOrdinal("hours_spent")),
+                    LogDate = reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("log_date")),
+                    Comment = reader.IsDBNull(reader.GetOrdinal("description"))
+                        ? null
+                        : reader.GetString(reader.GetOrdinal("description"))
+                };
+            }
+
+            return null;
+        }
+
+        public async Task<bool> UpdateWorkLogAsync(Guid workLogId, decimal hoursSpent, string? comment)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                UPDATE app.worklogs
+                SET hours_spent = @hours_spent,
+                    description = @description
+                WHERE id = @id;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            AddParameter(command, "id", workLogId);
+            AddParameter(command, "hours_spent", hoursSpent);
+            AddParameter(command, "description", string.IsNullOrWhiteSpace(comment) ? null : comment.Trim());
+
+            return await command.ExecuteNonQueryAsync() > 0;
+        }
+
+        public async Task<bool> DeleteWorkLogAsync(Guid workLogId)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                DELETE FROM app.worklogs
+                WHERE id = @id;
+            ";
+
+            await using var command = new NpgsqlCommand(sql, connection);
+            AddParameter(command, "id", workLogId);
 
             return await command.ExecuteNonQueryAsync() > 0;
         }

@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using HotChocolate.Authorization;
 using TaskManager.API.DTOs.Tasks;
 using TaskManager.API.Models.TasksTables;
@@ -293,6 +293,53 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 throw new GraphQLException("У вас немає доступу до цієї таски.");
 
             return await taskRepository.AddWorkLogAsync(currentUserId, input);
+        }
+
+        [Authorize]
+        public async Task<bool> UpdateWorkLog(
+            UpdateWorkLogInput input,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] ITaskRepository taskRepository,
+            [Service] IUserRepository userRepository)
+        {
+            if (input.HoursSpent <= 0)
+                throw new GraphQLException("Кількість годин повинна бути більше 0.");
+
+            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var user = await userRepository.GetUserByIdAsync(currentUserId);
+            if (user == null)
+                throw new GraphQLException("Користувача не знайдено.");
+
+            var worklog = await taskRepository.GetWorkLogByIdAsync(input.WorkLogId);
+            if (worklog == null)
+                throw new GraphQLException("Запис трекінгу часу не знайдено.");
+
+            if (worklog.UserId != currentUserId)
+                throw new GraphQLException("Ви можете редагувати лише власний трекінг часу.");
+
+            return await taskRepository.UpdateWorkLogAsync(input.WorkLogId, input.HoursSpent, input.Comment);
+        }
+
+        [Authorize]
+        public async Task<bool> DeleteWorkLog(
+            Guid workLogId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] ITaskRepository taskRepository,
+            [Service] IUserRepository userRepository)
+        {
+            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var user = await userRepository.GetUserByIdAsync(currentUserId);
+            if (user == null)
+                throw new GraphQLException("Користувача не знайдено.");
+
+            var worklog = await taskRepository.GetWorkLogByIdAsync(workLogId);
+            if (worklog == null)
+                throw new GraphQLException("Запис трекінгу часу не знайдено.");
+
+            if (worklog.UserId != currentUserId && !user.IsAdmin)
+                throw new GraphQLException("Ви можете видаляти лише власний трекінг часу.");
+
+            return await taskRepository.DeleteWorkLogAsync(workLogId);
         }
 
         [Authorize]

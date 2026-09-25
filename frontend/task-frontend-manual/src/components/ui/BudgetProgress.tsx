@@ -17,7 +17,7 @@ export function BudgetProgress({ usedHours, budgetHours }: BudgetProgressProps) 
 
     let colorClass = "bg-green-500";
 
-    if (percent >= 100) {
+    if (percent > 100) {
         colorClass = "bg-red-500";
     } else if (percent >= 80) {
         colorClass = "bg-yellow-500";

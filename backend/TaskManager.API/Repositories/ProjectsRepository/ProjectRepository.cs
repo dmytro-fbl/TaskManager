@@ -1125,7 +1125,7 @@ namespace TaskManager.API.Repositories.ProjectsRepository
                 CASE
                     WHEN up.budget_hours IS NULL OR up.budget_hours = 0 THEN 'no_budget'
                     WHEN u.used_hours / up.budget_hours < 0.8 THEN 'on_track'
-                    WHEN u.used_hours / up.budget_hours < 1.0 THEN 'at_risk'
+                    WHEN u.used_hours / up.budget_hours <= 1.0 THEN 'at_risk'
                     ELSE 'over_budget'
                 END AS budget_status
             FROM user_projects up
