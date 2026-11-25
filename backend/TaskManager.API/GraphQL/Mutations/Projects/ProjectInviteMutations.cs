@@ -1,6 +1,8 @@
 ﻿using System.Security.Claims;
 using HotChocolate;
 using HotChocolate.Authorization;
+using TaskManager.API.Extensions;
+using TaskManager.API.Models.Constants;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 
@@ -18,13 +20,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IProjectRepository projectRepository,
             ClaimsPrincipal claimsPrincipal)
         {
-            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdString, out var inviterUserId))
-            {
-                throw new GraphQLException("Не вдалося авторизувати користувача.");
-            }
+            var inviterUserId = claimsPrincipal.GetUserId();
 
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -35,10 +31,10 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             if (string.IsNullOrWhiteSpace(projectRole))
             {
-                projectRole = "contributor";
+                projectRole = ProjectRoles.Contributor;
             }
 
-            if (projectRole is not ("manager" or "contributor"))
+            if (!ProjectRoles.Allowed.Contains(projectRole))
             {
                 throw new GraphQLException("Невірна роль у проєкті. Дозволені: manager або contributor.");
             }
@@ -71,13 +67,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IProjectRepository projectRepository,
             ClaimsPrincipal claimsPrincipal)
         {
-            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdString, out var currentUserId))
-            {
-                throw new GraphQLException("Не вдалося авторизувати користувача.");
-            }
+            var currentUserId = claimsPrincipal.GetUserId();
 
             var success = await projectRepository.AcceptProjectInvitationAsync(token, currentUserId);
             if (!success)
@@ -97,45 +87,38 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IUserRepository userRepository,
             ClaimsPrincipal claimsPrincipal)
         {
-            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? claimsPrincipal.FindFirst("sub")?.Value;
+            var inviterUserId = claimsPrincipal.GetUserId();
 
-            if (Guid.TryParse(userIdString, out var inviterUserId))
+            if (string.IsNullOrWhiteSpace(email))
             {
-                if (string.IsNullOrWhiteSpace(email))
-                {
-                    throw new GraphQLException("Email не може бути порожнім.");
-                }
-
-                email = email.Trim().ToLowerInvariant();
-
-                if (string.IsNullOrWhiteSpace(projectRole))
-                {
-                    projectRole = "contributor";
-                }
-
-                if (projectRole is not ("manager" or "contributor"))
-                {
-                    throw new GraphQLException("Невірна роль у проєкті. Дозволені: manager або contributor.");
-                }
-
-                var currentUser = await userRepository.GetUserByIdAsync(inviterUserId);
-                if (currentUser == null)
-                {
-                    throw new GraphQLException("Поточного користувача не знайдено.");
-                }
-                var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, inviterUserId);
-                if (!isUserInProject && !currentUser.IsAdmin)
-                {
-                    throw new GraphQLException("Тільки адміністратор або учасник проєкту може додавати користувачів.");
-                }
-
-                var result = await projectRepository.InviteUserToProjectAsync(projectId, email, projectRole);
-
-                return result;
+                throw new GraphQLException("Email не може бути порожнім.");
             }
 
-            throw new GraphQLException("Не вдалося авторизувати користувача.");
+            email = email.Trim().ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(projectRole))
+            {
+                projectRole = ProjectRoles.Contributor;
+            }
+
+            if (!ProjectRoles.Allowed.Contains(projectRole))
+            {
+                throw new GraphQLException("Невірна роль у проєкті. Дозволені: manager або contributor.");
+            }
+
+            var currentUser = await userRepository.GetUserByIdAsync(inviterUserId);
+            if (currentUser == null)
+            {
+                throw new GraphQLException("Поточного користувача не знайдено.");
+            }
+
+            var isUserInProject = await projectRepository.IsUserInProjectAsync(projectId, inviterUserId);
+            if (!isUserInProject && !currentUser.IsAdmin)
+            {
+                throw new GraphQLException("Тільки адміністратор або учасник проєкту може додавати користувачів.");
+            }
+
+            return await projectRepository.InviteUserToProjectAsync(projectId, email, projectRole);
         }
     }
 }

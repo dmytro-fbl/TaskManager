@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using HotChocolate.Authorization;
 using TaskManager.API.DTOs.Tasks;
+using TaskManager.API.Extensions;
+using TaskManager.API.Models.Constants;
 using TaskManager.API.Models.TasksTables;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
@@ -19,7 +21,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IProjectRepository projectRepository,
             [Service] IUserRepository userRepository)
         {
-            var userId = GetCurrentUserId(claimsPrincipal);
+            var userId = claimsPrincipal.GetUserId();
             var currentUser = await userRepository.GetUserByIdAsync(userId);
 
             if (currentUser == null)
@@ -57,17 +59,9 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 );
             }
 
-            var allowedPriorities = new[]
-            {
-                "low",
-                "medium",
-                "high",
-                "critical"
-            };
-
             var priority = input.Priority.Trim().ToLowerInvariant();
 
-            if (!allowedPriorities.Contains(priority))
+            if (!TaskPriorities.Allowed.Contains(priority))
             {
                 throw new GraphQLException("Невірний пріоритет таски.");
             }
@@ -201,25 +195,6 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 );
         }
 
-        private static Guid GetCurrentUserId(
-            ClaimsPrincipal claimsPrincipal)
-        {
-            var userIdValue =
-                claimsPrincipal.FindFirst(
-                    ClaimTypes.NameIdentifier
-                )?.Value ??
-                claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdValue, out var userId))
-            {
-                throw new GraphQLException(
-                    "Не вдалося авторизувати користувача."
-                );
-            }
-
-            return userId;
-        }
-
         [Authorize]
         public async Task<TaskItem> UpdateTaskDetailsAsync(
             UpdateTaskInput input,
@@ -228,7 +203,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IProjectRepository projectRepository,
             [Service] IUserRepository userRepository)
         {
-            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var currentUserId = claimsPrincipal.GetUserId();
 
             var existingTask = await taskRepository.GetTaskByIdAsync(input.TaskId);
 
@@ -253,8 +228,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (input.EstimatedBudget.HasValue && input.EstimatedBudget > 1000000)
                 throw new GraphQLException("Бюджет перевищує максимально допустиме значення.");
 
-            var allowedPriorities = new[] { "low", "medium", "high", "critical" };
-            if (!allowedPriorities.Contains(input.Priority.Trim().ToLowerInvariant()))
+            if (!TaskPriorities.Allowed.Contains(input.Priority.Trim()))
                 throw new GraphQLException("Невірний пріоритет таски.");
 
             if (input.StartDate.HasValue && input.DueDate.HasValue && input.DueDate < input.StartDate)
@@ -280,7 +254,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (input.HoursSpent <= 0)
                 throw new GraphQLException("Вкажіть коректний час.");
 
-            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var currentUserId = claimsPrincipal.GetUserId();
             var user = await userRepository.GetUserByIdAsync(currentUserId);
             if (user == null)
                 throw new GraphQLException("Користувача не знайдено.");
@@ -305,7 +279,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (input.HoursSpent <= 0)
                 throw new GraphQLException("Кількість годин повинна бути більше 0.");
 
-            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var currentUserId = claimsPrincipal.GetUserId();
             var user = await userRepository.GetUserByIdAsync(currentUserId);
             if (user == null)
                 throw new GraphQLException("Користувача не знайдено.");
@@ -327,7 +301,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] ITaskRepository taskRepository,
             [Service] IUserRepository userRepository)
         {
-            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var currentUserId = claimsPrincipal.GetUserId();
             var user = await userRepository.GetUserByIdAsync(currentUserId);
             if (user == null)
                 throw new GraphQLException("Користувача не знайдено.");
@@ -350,7 +324,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IUserRepository userRepository,
             [Service] IProjectRepository projectRepository)
         {
-            var userId = GetCurrentUserId(claimsPrincipal);
+            var userId = claimsPrincipal.GetUserId();
             var currentUser = await userRepository.GetUserByIdAsync(userId);
             if (currentUser == null)
                 throw new GraphQLException("Користувача не знайдено.");

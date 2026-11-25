@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using HotChocolate.Authorization;
 using TaskManager.API.DTOs.Tasks;
+using TaskManager.API.Extensions;
 using TaskManager.API.Models.TasksTables;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
@@ -19,7 +20,7 @@ namespace TaskManager.API.GraphQL.Queries
             [Service] IProjectRepository projectRepository,
             [Service] IUserRepository userRepository)
         {
-            var userId = GetCurrentUserId(claimsPrincipal);
+            var userId = claimsPrincipal.GetUserId();
             var currentUser = await userRepository.GetUserByIdAsync(userId);
 
             if (currentUser == null)
@@ -45,7 +46,7 @@ namespace TaskManager.API.GraphQL.Queries
                 return null;
             }
 
-            var userId = GetCurrentUserId(claimsPrincipal);
+            var userId = claimsPrincipal.GetUserId();
             var currentUser = await userRepository.GetUserByIdAsync(userId);
 
             if (currentUser == null)
@@ -54,23 +55,6 @@ namespace TaskManager.API.GraphQL.Queries
             }
 
             return task;
-        }
-
-        private static Guid GetCurrentUserId(
-            ClaimsPrincipal claimsPrincipal)
-        {
-            var userIdValue =
-                claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value ??
-                claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdValue, out var userId))
-            {
-                throw new GraphQLException(
-                    "Не вдалося авторизувати користувача."
-                );
-            }
-
-            return userId;
         }
 
         [Authorize]
@@ -88,7 +72,7 @@ namespace TaskManager.API.GraphQL.Queries
                 throw new GraphQLException("Завдання не знайдено.");
             }
 
-            var userId = GetCurrentUserId(claimsPrincipal);
+            var userId = claimsPrincipal.GetUserId();
             var currentUser = await userRepository.GetUserByIdAsync(userId);
 
             if (currentUser == null)
@@ -112,7 +96,7 @@ namespace TaskManager.API.GraphQL.Queries
             if (task == null)
                 throw new GraphQLException("Завдання не знайдено.");
 
-            var userId = GetCurrentUserId(claimsPrincipal);
+            var userId = claimsPrincipal.GetUserId();
 
             var currentUser = await userRepository.GetUserByIdAsync(userId);
             if (currentUser == null)

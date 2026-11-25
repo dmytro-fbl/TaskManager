@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using HotChocolate.Authorization;
 using TaskManager.API.DTOs.Dashboard;
+using TaskManager.API.Extensions;
 using TaskManager.API.Repositories.ProjectsRepository;
 
 namespace TaskManager.API.GraphQL.Queries
@@ -12,14 +13,7 @@ namespace TaskManager.API.GraphQL.Queries
             ClaimsPrincipal claimsPrincipal,
             [Service] IProjectRepository projectRepository)
         {
-            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdString, out var userId))
-            {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
-            }
-
+            var userId = claimsPrincipal.GetUserId();
             return await projectRepository.GetDashboardStatsAsync(userId);
         }
 
@@ -28,14 +22,7 @@ namespace TaskManager.API.GraphQL.Queries
             ClaimsPrincipal claimsPrincipal,
             [Service] IProjectRepository projectRepository)
         {
-            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdString, out var userId))
-            {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
-            }
-
+            var userId = claimsPrincipal.GetUserId();
             return await projectRepository.GetMyProjectsWithHoursAsync(userId);
         }
 
@@ -44,14 +31,7 @@ namespace TaskManager.API.GraphQL.Queries
             ClaimsPrincipal claimsPrincipal,
             [Service] IProjectRepository projectRepository)
         {
-            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdString, out var userId))
-            {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
-            }
-
+            var userId = claimsPrincipal.GetUserId();
             return await projectRepository.GetManagerProjectsWithRoleHoursAsync(userId);
         }
 
@@ -60,17 +40,7 @@ namespace TaskManager.API.GraphQL.Queries
             ClaimsPrincipal claimsPrincipal,
             [Service] IProjectRepository projectRepository)
         {
-            var userIdString =
-                claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                ?? claimsPrincipal.FindFirst("sub")?.Value
-                ?? claimsPrincipal.FindFirst("email")?.Value;
-
-            if (string.IsNullOrEmpty(userIdString))
-            {
-                return Enumerable.Empty<AvailableProjectDto>();
-            }
-
-            if (!Guid.TryParse(userIdString, out var userId))
+            if (!claimsPrincipal.TryGetUserId(out var userId))
             {
                 return Enumerable.Empty<AvailableProjectDto>();
             }

@@ -2,6 +2,7 @@
 using HotChocolate.Authorization;
 using TaskManager.API.Models;
 using TaskManager.API.Repositories;
+using TaskManager.API.Services;
 
 namespace TaskManager.API.GraphQL.Queries
 {
@@ -10,41 +11,20 @@ namespace TaskManager.API.GraphQL.Queries
     {
         [Authorize]
         public async Task<IEnumerable<User>> GetUsersAsync(ClaimsPrincipal claimsPrincipal,
-            [Service] IUserRepository userRepository)
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
         {
-            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if(Guid.TryParse(userIdString, out var userId))
-            {
-                var currentUser = await userRepository.GetUserByIdAsync(userId);
-
-                if(currentUser == null || !currentUser.IsAdmin)
-                {
-                    throw new GraphQLException("Доступ заборонено.");
-                }
-
-                return await userRepository.GetAllUsersAsync();
-            }
-            throw new GraphQLException("Неавторизований запит");
+            await accessService.EnsureAdminAsync(claimsPrincipal, "Доступ заборонено.");
+            return await userRepository.GetAllUsersAsync();
         }
 
         [Authorize]
         public async Task<IEnumerable<User>> GetPendingInviteUsersAsync(ClaimsPrincipal claimsPrincipal,
-            [Service] IUserRepository userRepository)
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
         {
-            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (Guid.TryParse(userIdString, out var userId))
-            {
-                var currentUser = await userRepository.GetUserByIdAsync(userId);
-
-                if(currentUser == null || !currentUser.IsAdmin)
-                {
-                    throw new GraphQLException("Доступ заборонено.");
-                }
-                return await userRepository.GetUsersPendingInviteAsync();
-            }
-            throw new GraphQLException("Неавторизований запит");
+            await accessService.EnsureAdminAsync(claimsPrincipal, "Доступ заборонено.");
+            return await userRepository.GetUsersPendingInviteAsync();
         }
 
 
