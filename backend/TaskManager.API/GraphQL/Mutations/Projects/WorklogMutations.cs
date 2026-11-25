@@ -1,6 +1,7 @@
 ﻿using HotChocolate.Authorization;
 using System.Security.Claims;
 using TaskManager.API.DTOs.Worklog;
+using TaskManager.API.Extensions;
 using TaskManager.API.Models.ProjectsTables;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
@@ -19,13 +20,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
     [Service] IProjectRepository projectRepository,
     [Service] IUserRepository userRepository)
         {
-            var userIdString = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                               ?? claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdString, out var userId))
-            {
-                throw new GraphQLException("Не вдалось авторизувати користувача.");
-            }
+            var userId = claimsPrincipal.GetUserId();
 
             var currentUser = await userRepository.GetUserByIdAsync(userId);
             if (currentUser == null)
