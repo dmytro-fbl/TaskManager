@@ -36,7 +36,9 @@ namespace TaskManager.API.Services
             {
                 Subject = new ClaimsIdentity(claims),
 
-                Expires = DateTime.UtcNow.AddMinutes(15),
+                Issuer = _config["Jwt:Issuer"],
+                Audience = _config["Jwt:Audience"],
+                Expires = DateTime.UtcNow.AddMinutes(_config.GetValue<int>("Jwt:ExpireMinutes", 15)),
                 SigningCredentials = creds
             };
 
