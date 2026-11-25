@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using HotChocolate.Authorization;
+using TaskManager.API.Extensions;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Repositories.TasksRepository;
@@ -20,7 +21,7 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             [Service] IProjectRepository projectRepository,
             [Service] IUserRepository userRepository)
         {
-            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var currentUserId = claimsPrincipal.GetUserId();
 
             if (estimatedHours <= 0)
             {
@@ -122,7 +123,7 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             [Service] IProjectRepository projectRepository,
             [Service] IUserRepository userRepository)
         {
-            var currentUserId = GetCurrentUserId(claimsPrincipal);
+            var currentUserId = claimsPrincipal.GetUserId();
 
             var task = await taskRepository.GetTaskByIdAsync(taskId);
 
@@ -169,25 +170,6 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             }
 
             return true;
-        }
-
-        private static Guid GetCurrentUserId(
-            ClaimsPrincipal claimsPrincipal)
-        {
-            var userIdValue =
-                claimsPrincipal.FindFirst(
-                    ClaimTypes.NameIdentifier
-                )?.Value ??
-                claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdValue, out var userId))
-            {
-                throw new GraphQLException(
-                    "Не вдалося авторизувати користувача."
-                );
-            }
-
-            return userId;
         }
     }
 }
