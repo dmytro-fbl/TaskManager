@@ -43,7 +43,13 @@ namespace TaskManager.API
             builder.Services.AddNpgsqlDataSource(connectionString);
 
             // 3. Authentication (ОБОВ'ЯЗКОВО перед GraphQL)
-            var jwtSecretKey = builder.Configuration.GetSection("Jwt:Key").Value;
+            var jwtSecretKey = builder.Configuration["Jwt:Key"];
+
+            if (string.IsNullOrWhiteSpace(jwtSecretKey) || jwtSecretKey == "SET_VIA_USER_SECRETS" || Encoding.UTF8.GetByteCount(jwtSecretKey) < 32)
+            {
+                throw new InvalidOperationException(
+                    "Jwt:Key is missing or too short (min 32 bytes). Set it with: dotnet user-secrets set \"Jwt:Key\" \"<secret>\"");
+            }
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
