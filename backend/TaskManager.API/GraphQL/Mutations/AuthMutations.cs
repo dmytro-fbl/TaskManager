@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using TaskManager.API.DTOs;
+using TaskManager.API.Extensions;
 using TaskManager.API.Repositories;
 using TaskManager.API.Services;
 
@@ -45,15 +46,13 @@ namespace TaskManager.API.GraphQL.Mutations
         public async Task<bool> LogoutAsync(ClaimsPrincipal claimsPrincipal,
             [Service] IUserRepository userRepository)
         {
-            var userIdStr = claimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            
-            if (Guid.TryParse(userIdStr, out Guid userId))
+            if (!claimsPrincipal.TryGetUserId(out var userId))
             {
-                await userRepository.UpdateRefreshTokenAsync(userId, null , null);
-                return true;
+                throw new GraphQLException("Не вдалося ідентифікувати користувача для виходу");
             }
 
-            throw new GraphQLException("Не вдалося ідентифікувати користувача для виходу");
+            await userRepository.UpdateRefreshTokenAsync(userId, null, null);
+            return true;
         }
     }
 }
