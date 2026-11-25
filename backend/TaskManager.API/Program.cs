@@ -29,10 +29,11 @@ namespace TaskManager.API
             {
                 options.AddPolicy("AllowReact", policy =>
                 {
-                    policy.WithOrigins(
-                        "http://localhost:5173",
-                        "http://localhost:5174"
-                    )
+                    var allowedOrigins = builder.Configuration
+                        .GetSection("Cors:AllowedOrigins")
+                        .Get<string[]>() ?? Array.Empty<string>();
+
+                    policy.WithOrigins(allowedOrigins)
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 });
@@ -43,7 +44,13 @@ namespace TaskManager.API
             builder.Services.AddNpgsqlDataSource(connectionString);
 
             // 3. Authentication (ОБОВ'ЯЗКОВО перед GraphQL)
-            var jwtSecretKey = builder.Configuration.GetSection("Jwt:Key").Value;
+            var jwtSecretKey = builder.Configuration["Jwt:Key"];
+
+            if (string.IsNullOrWhiteSpace(jwtSecretKey) || jwtSecretKey == "SET_VIA_USER_SECRETS" || Encoding.UTF8.GetByteCount(jwtSecretKey) < 32)
+            {
+                throw new InvalidOperationException(
+                    "Jwt:Key is missing or too short (min 32 bytes). Set it with: dotnet user-secrets set \"Jwt:Key\" \"<secret>\"");
+            }
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -52,8 +59,10 @@ namespace TaskManager.API
                     {
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecretKey)),
-                        ValidateIssuer = false,
-                        ValidateAudience = false
+                        ValidateIssuer = true,
+                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                        ValidateAudience = true,
+                        ValidAudience = builder.Configuration["Jwt:Audience"]
                     };
                 });
 
@@ -65,7 +74,7 @@ namespace TaskManager.API
                 .AddGraphQLServer()
                 .ModifyRequestOptions(opt =>
                 {
-                    opt.IncludeExceptionDetails = true;
+                    opt.IncludeExceptionDetails = builder.Environment.IsDevelopment();
                 })
                 .AddAuthorization()
                 .AddQueryType<Query>()
