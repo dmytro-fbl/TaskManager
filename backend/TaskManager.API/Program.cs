@@ -65,7 +65,7 @@ namespace TaskManager.API
                 .AddGraphQLServer()
                 .ModifyRequestOptions(opt =>
                 {
-                    opt.IncludeExceptionDetails = true;
+                    opt.IncludeExceptionDetails = builder.Environment.IsDevelopment();
                 })
                 .AddAuthorization()
                 .AddQueryType<Query>()
