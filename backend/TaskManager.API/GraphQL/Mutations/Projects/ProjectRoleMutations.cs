@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using TaskManager.API.Extensions;
+using TaskManager.API.Models.Constants;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 
@@ -31,7 +32,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 throw new GraphQLException("Ви не можете змінювати власну роль у проєкті.");
             }
 
-            if (projectRole is not ("manager" or "contributor"))
+            if (!ProjectRoles.Allowed.Contains(projectRole))
             {
                 throw new GraphQLException("Невірна роль проєкту.");
             }
@@ -41,7 +42,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (!hasAccess)
             {
                 var currentUserRole = await projectRepository.GetUserProjectRoleAsync(projectId, currentUserId);
-                if (currentUserRole == "manager")
+                if (currentUserRole == ProjectRoles.Manager)
                 {
                     hasAccess = true;
                 }

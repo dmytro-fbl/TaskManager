@@ -2,6 +2,7 @@ using System.Security.Claims;
 using HotChocolate.Authorization;
 using TaskManager.API.DTOs.Tasks;
 using TaskManager.API.Extensions;
+using TaskManager.API.Models.Constants;
 using TaskManager.API.Models.TasksTables;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
@@ -58,17 +59,9 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 );
             }
 
-            var allowedPriorities = new[]
-            {
-                "low",
-                "medium",
-                "high",
-                "critical"
-            };
-
             var priority = input.Priority.Trim().ToLowerInvariant();
 
-            if (!allowedPriorities.Contains(priority))
+            if (!TaskPriorities.Allowed.Contains(priority))
             {
                 throw new GraphQLException("Невірний пріоритет таски.");
             }
@@ -235,8 +228,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (input.EstimatedBudget.HasValue && input.EstimatedBudget > 1000000)
                 throw new GraphQLException("Бюджет перевищує максимально допустиме значення.");
 
-            var allowedPriorities = new[] { "low", "medium", "high", "critical" };
-            if (!allowedPriorities.Contains(input.Priority.Trim().ToLowerInvariant()))
+            if (!TaskPriorities.Allowed.Contains(input.Priority.Trim()))
                 throw new GraphQLException("Невірний пріоритет таски.");
 
             if (input.StartDate.HasValue && input.DueDate.HasValue && input.DueDate < input.StartDate)

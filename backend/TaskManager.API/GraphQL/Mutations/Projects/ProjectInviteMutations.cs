@@ -2,6 +2,7 @@
 using HotChocolate;
 using HotChocolate.Authorization;
 using TaskManager.API.Extensions;
+using TaskManager.API.Models.Constants;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 
@@ -30,10 +31,10 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             if (string.IsNullOrWhiteSpace(projectRole))
             {
-                projectRole = "contributor";
+                projectRole = ProjectRoles.Contributor;
             }
 
-            if (projectRole is not ("manager" or "contributor"))
+            if (!ProjectRoles.Allowed.Contains(projectRole))
             {
                 throw new GraphQLException("Невірна роль у проєкті. Дозволені: manager або contributor.");
             }
@@ -97,10 +98,10 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             if (string.IsNullOrWhiteSpace(projectRole))
             {
-                projectRole = "contributor";
+                projectRole = ProjectRoles.Contributor;
             }
 
-            if (projectRole is not ("manager" or "contributor"))
+            if (!ProjectRoles.Allowed.Contains(projectRole))
             {
                 throw new GraphQLException("Невірна роль у проєкті. Дозволені: manager або contributor.");
             }
