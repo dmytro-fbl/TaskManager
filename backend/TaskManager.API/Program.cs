@@ -114,6 +114,7 @@ namespace TaskManager.API
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<ITaskCommentService, TaskCommentService>();
+            builder.Services.AddScoped<IAccessService, AccessService>();
 
             var app = builder.Build();
 
