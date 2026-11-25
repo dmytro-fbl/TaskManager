@@ -29,10 +29,11 @@ namespace TaskManager.API
             {
                 options.AddPolicy("AllowReact", policy =>
                 {
-                    policy.WithOrigins(
-                        "http://localhost:5173",
-                        "http://localhost:5174"
-                    )
+                    var allowedOrigins = builder.Configuration
+                        .GetSection("Cors:AllowedOrigins")
+                        .Get<string[]>() ?? Array.Empty<string>();
+
+                    policy.WithOrigins(allowedOrigins)
                         .AllowAnyHeader()
                         .AllowAnyMethod();
                 });
