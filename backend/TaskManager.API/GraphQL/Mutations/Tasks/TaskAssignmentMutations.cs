@@ -18,7 +18,7 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             Guid? roleId,
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository projectRepository,
             [Service] IUserRepository userRepository)
         {
             var currentUserId = claimsPrincipal.GetUserId();
@@ -120,7 +120,7 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             Guid userId,
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository projectRepository,
             [Service] IUserRepository userRepository)
         {
             var currentUserId = claimsPrincipal.GetUserId();

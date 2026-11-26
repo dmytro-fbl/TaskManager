@@ -17,7 +17,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             string email,
             string projectRole,
             Guid? roleLabelId,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository projectRepository,
             ClaimsPrincipal claimsPrincipal)
         {
             var inviterUserId = claimsPrincipal.GetUserId();
@@ -64,7 +64,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
         [Authorize]
         public async Task<bool> AcceptProjectInviteAsync(
             string token,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository projectRepository,
             ClaimsPrincipal claimsPrincipal)
         {
             var currentUserId = claimsPrincipal.GetUserId();
@@ -83,7 +83,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid projectId,
             string email,
             string projectRole,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository projectRepository,
             [Service] IUserRepository userRepository,
             ClaimsPrincipal claimsPrincipal)
         {

@@ -10,17 +10,6 @@ namespace TaskManager.API.GraphQL.Mutations
     [ExtendObjectType(OperationTypeNames.Mutation)]
     public class UserMutation
     {
-        private readonly IUserRepository _userRepository;
-        private readonly ITokenService _tokenService;
-
-        public UserMutation(IUserRepository userRepository, ITokenService tokenService)
-        {
-            _userRepository = userRepository;
-            _tokenService = tokenService;
-        }
-
-        
-
         [Authorize]
         public async Task<bool> ToggleUserRoleAsync(Guid userId, bool isAdmin, ClaimsPrincipal claimsPrincipal,
             [Service] IUserRepository userRepository,

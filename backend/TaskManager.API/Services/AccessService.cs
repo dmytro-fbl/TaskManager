@@ -10,14 +10,14 @@ namespace TaskManager.API.Services
     public class AccessService : IAccessService
     {
         private readonly IUserRepository _userRepository;
-        private readonly IProjectRepository _projectRepository;
+        private readonly IProjectMembershipRepository _membershipRepository;
 
         public AccessService(
             IUserRepository userRepository,
-            IProjectRepository projectRepository)
+            IProjectMembershipRepository membershipRepository)
         {
             _userRepository = userRepository;
-            _projectRepository = projectRepository;
+            _membershipRepository = membershipRepository;
         }
 
         public async Task<User> EnsureCurrentUserAsync(ClaimsPrincipal claimsPrincipal)
@@ -45,7 +45,7 @@ namespace TaskManager.API.Services
             string? deniedMessage = null)
         {
             var user = await EnsureCurrentUserAsync(claimsPrincipal);
-            var hasAccess = user.IsAdmin || await _projectRepository.IsUserInProjectAsync(projectId, user.Id);
+            var hasAccess = user.IsAdmin || await _membershipRepository.IsUserInProjectAsync(projectId, user.Id);
 
             if (!hasAccess)
             {
@@ -68,7 +68,7 @@ namespace TaskManager.API.Services
                 return user;
             }
 
-            var userRole = await _projectRepository.GetUserProjectRoleAsync(projectId, user.Id);
+            var userRole = await _membershipRepository.GetUserProjectRoleAsync(projectId, user.Id);
             if (userRole != ProjectRoles.Manager)
             {
                 throw new GraphQLException(deniedMessage ?? "Доступ заборонено!");

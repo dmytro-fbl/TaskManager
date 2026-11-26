@@ -4,6 +4,7 @@ using Npgsql;
 using System.Text;
 using TaskManager.API.DTOs.Dashboard;
 using TaskManager.API.GraphQL.Extensions;
+using TaskManager.API.Infrastructure;
 using TaskManager.API.GraphQL.Mutations;
 using TaskManager.API.GraphQL.Mutations.Projects;
 using TaskManager.API.GraphQL.Mutations.Tasks;
@@ -40,6 +41,7 @@ namespace TaskManager.API
             });
 
             // 2. DB
+            DapperConfig.Configure();
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddNpgsqlDataSource(connectionString);
 
@@ -116,10 +118,12 @@ namespace TaskManager.API
             // 6. Repositories & Services
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+            builder.Services.AddScoped<IProjectMembershipRepository, ProjectMembershipRepository>();
+            builder.Services.AddScoped<IProjectRoleRepository, ProjectRoleRepository>();
+            builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
             builder.Services.AddScoped<ITaskRepository, TaskRepository>();
             builder.Services.AddScoped<ITaskCommentsRepository, TaskCommentsRepository>();
 
-            builder.Services.AddScoped<IUserServices, UserServices>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<ITaskCommentService, TaskCommentService>();

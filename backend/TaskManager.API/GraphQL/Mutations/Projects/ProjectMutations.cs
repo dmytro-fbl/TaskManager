@@ -101,6 +101,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid memberUserId,
             ClaimsPrincipal claimsPrincipal,
             [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository membershipRepository,
             [Service] IAccessService accessService,
             [Service] ITaskRepository taskRepository)
         {
@@ -121,7 +122,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (hasTasks)
                 throw new GraphQLException("Неможливо видалити користувача, оскільки на нього призначені завдання або є витрачений час у цьому проєкті.");
 
-            return await projectRepository.RemoveMemberAsync(projectId, memberUserId);
+            return await membershipRepository.RemoveMemberAsync(projectId, memberUserId);
         }
 
         [Authorize]
@@ -129,7 +130,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid projectId,
             string name,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectRoleRepository projectRoleRepository,
             [Service] IAccessService accessService)
         {
             if (string.IsNullOrWhiteSpace(name) || name.Trim().Length < 2)
@@ -144,7 +145,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             try
             {
-                return await projectRepository.CreateProjectRoleAsync(projectId, name);
+                return await projectRoleRepository.CreateProjectRoleAsync(projectId, name);
             }
             catch (InvalidOperationException ex)
             {
@@ -158,7 +159,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid roleId,
             string newName,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectRoleRepository projectRoleRepository,
             [Service] IAccessService accessService)
         {
             if (string.IsNullOrWhiteSpace(newName) || newName.Trim().Length < 2)
@@ -171,7 +172,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             try
             {
-                return await projectRepository.UpdateProjectRoleAsync(projectId, roleId, newName);
+                return await projectRoleRepository.UpdateProjectRoleAsync(projectId, roleId, newName);
             }
             catch (InvalidOperationException ex)
             {
@@ -184,7 +185,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid projectId,
             Guid roleId,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectRoleRepository projectRoleRepository,
             [Service] IAccessService accessService)
         {
             await accessService.EnsureProjectManagerOrAdminAsync(
@@ -194,7 +195,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             try
             {
-                return await projectRepository.DeleteProjectRoleAsync(roleId, projectId);
+                return await projectRoleRepository.DeleteProjectRoleAsync(roleId, projectId);
             }
             catch (Exception ex)
             {

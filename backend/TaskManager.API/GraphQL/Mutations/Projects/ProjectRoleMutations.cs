@@ -17,7 +17,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid userId,
             string projectRole,
             Guid? roleLabelId,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository projectRepository,
             [Service] IUserRepository userRepository,
             ClaimsPrincipal claimsPrincipal)
         { 
