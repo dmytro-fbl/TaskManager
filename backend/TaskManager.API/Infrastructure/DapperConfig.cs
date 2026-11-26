@@ -9,6 +9,22 @@ namespace TaskManager.API.Infrastructure
         {
             DefaultTypeMap.MatchNamesWithUnderscores = true;
             SqlMapper.AddTypeHandler(new UtcDateTimeOffsetHandler());
+            SqlMapper.AddTypeHandler(new GuidListHandler());
+        }
+
+        private sealed class GuidListHandler : SqlMapper.TypeHandler<List<Guid>>
+        {
+            public override void SetValue(IDbDataParameter parameter, List<Guid>? value)
+            {
+                parameter.Value = value?.ToArray() ?? (object)DBNull.Value;
+            }
+
+            public override List<Guid> Parse(object value) => value switch
+            {
+                Guid[] array => array.ToList(),
+                IEnumerable<Guid> seq => seq.ToList(),
+                _ => new List<Guid>()
+            };
         }
 
         private sealed class UtcDateTimeOffsetHandler : SqlMapper.TypeHandler<DateTimeOffset>
