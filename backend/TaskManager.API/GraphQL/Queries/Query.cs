@@ -11,37 +11,37 @@ namespace TaskManager.API.GraphQL.Queries
         [Authorize]
         public async Task<DashboardStatsDto> GetDashboardStatsAsync(
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository)
+            [Service] IDashboardRepository dashboardRepository)
         {
             var userId = claimsPrincipal.GetUserId();
-            return await projectRepository.GetDashboardStatsAsync(userId);
+            return await dashboardRepository.GetDashboardStatsAsync(userId);
         }
 
         [Authorize]
         public async Task<IEnumerable<MyProjectDashboardDto>> GetMyProjectsDashboardAsync(
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository)
+            [Service] IDashboardRepository dashboardRepository)
         {
             var userId = claimsPrincipal.GetUserId();
-            return await projectRepository.GetMyProjectsWithHoursAsync(userId);
+            return await dashboardRepository.GetMyProjectsWithHoursAsync(userId);
         }
 
         [Authorize]
         public async Task<IEnumerable<ManagerProjectDashboardDto>> GetManagerProjectsDashboardAsync(
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository)
+            [Service] IDashboardRepository dashboardRepository)
         {
             var userId = claimsPrincipal.GetUserId();
-            return await projectRepository.GetManagerProjectsWithRoleHoursAsync(userId);
+            return await dashboardRepository.GetManagerProjectsWithRoleHoursAsync(userId);
         }
 
         [Authorize]
         public async Task<IEnumerable<AvailableProjectDto>> GetAvailableProjectsDashboardAsync(
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository)
+            [Service] IDashboardRepository dashboardRepository)
         {
             var userId = claimsPrincipal.GetUserId();
-            return await projectRepository.GetAvailableProjectsAsync(userId);
+            return await dashboardRepository.GetAvailableProjectsAsync(userId);
         }
     }
 }

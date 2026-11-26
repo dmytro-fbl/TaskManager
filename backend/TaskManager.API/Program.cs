@@ -118,6 +118,7 @@ namespace TaskManager.API
             // 6. Repositories & Services
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+            builder.Services.AddScoped<IDashboardRepository, DashboardRepository>();
             builder.Services.AddScoped<ITaskRepository, TaskRepository>();
             builder.Services.AddScoped<ITaskCommentsRepository, TaskCommentsRepository>();
 
