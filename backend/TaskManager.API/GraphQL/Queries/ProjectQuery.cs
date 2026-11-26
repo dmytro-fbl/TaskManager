@@ -82,11 +82,11 @@ namespace TaskManager.API.GraphQL.Queries
         public async Task<IEnumerable<ProjectRoleDTO>> GetProjectRolesAsync(
             Guid projectId,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectRoleRepository projectRoleRepository,
             [Service] IAccessService accessService)
         {
             await accessService.EnsureCurrentUserAsync(claimsPrincipal);
-            return await projectRepository.GetProjectRolesAsync(projectId);
+            return await projectRoleRepository.GetProjectRolesAsync(projectId);
         }
     }
 }
