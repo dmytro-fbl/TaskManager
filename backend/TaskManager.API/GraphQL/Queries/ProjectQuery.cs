@@ -39,22 +39,22 @@ namespace TaskManager.API.GraphQL.Queries
         public async Task<IEnumerable<User>> GetProjectMembersAsync(
             Guid projectId,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository membershipRepository,
             [Service] IAccessService accessService)
         {
             await accessService.EnsureCurrentUserAsync(claimsPrincipal);
-            return await projectRepository.GetProjectMembersAsync(projectId);
+            return await membershipRepository.GetProjectMembersAsync(projectId);
         }
 
         [Authorize]
         public async Task<IEnumerable<ProjectMembership>> GetProjectMembershipsAsync(
             Guid projectId,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository membershipRepository,
             [Service] IAccessService accessService)
         {
             await accessService.EnsureCurrentUserAsync(claimsPrincipal);
-            return await projectRepository.GetProjectMembershipsAsync(projectId);
+            return await membershipRepository.GetProjectMembershipsAsync(projectId);
         }
 
         [Authorize]

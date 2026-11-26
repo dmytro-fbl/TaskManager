@@ -17,7 +17,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
     AddProjectHoursInput input,
     ClaimsPrincipal claimsPrincipal,
     [Service] ITaskRepository taskRepository,
-    [Service] IProjectRepository projectRepository,
+    [Service] IProjectMembershipRepository projectRepository,
     [Service] IUserRepository userRepository)
         {
             var userId = claimsPrincipal.GetUserId();

@@ -101,6 +101,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid memberUserId,
             ClaimsPrincipal claimsPrincipal,
             [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository membershipRepository,
             [Service] IAccessService accessService,
             [Service] ITaskRepository taskRepository)
         {
@@ -121,7 +122,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (hasTasks)
                 throw new GraphQLException("Неможливо видалити користувача, оскільки на нього призначені завдання або є витрачений час у цьому проєкті.");
 
-            return await projectRepository.RemoveMemberAsync(projectId, memberUserId);
+            return await membershipRepository.RemoveMemberAsync(projectId, memberUserId);
         }
 
         [Authorize]

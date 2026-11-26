@@ -13,18 +13,18 @@ namespace TaskManager.API.Services
     {
         private readonly ITaskCommentsRepository _commentRepository;
         private readonly ITaskRepository _taskRepository;
-        private readonly IProjectRepository _projectRepository;
+        private readonly IProjectMembershipRepository _membershipRepository;
         private readonly IUserRepository _userRepository;
 
         public TaskCommentService(
             ITaskCommentsRepository commentRepository,
             ITaskRepository taskRepository,
-            IProjectRepository projectRepository,
+            IProjectMembershipRepository membershipRepository,
             IUserRepository userRepository)
         {
             _commentRepository = commentRepository;
             _taskRepository = taskRepository;
-            _projectRepository = projectRepository;
+            _membershipRepository = membershipRepository;
             _userRepository = userRepository;
         }
 
@@ -36,7 +36,7 @@ namespace TaskManager.API.Services
             var user = await _userRepository.GetUserByIdAsync(userId);
             if (user == null) throw new GraphQLException("Користувача не знайдено.");
 
-            var hasAccess = user.IsAdmin || await _projectRepository.IsUserInProjectAsync(task.ProjectId, userId);
+            var hasAccess = user.IsAdmin || await _membershipRepository.IsUserInProjectAsync(task.ProjectId, userId);
 
             if (!hasAccess)
                 throw new GraphQLException("У вас немає доступу до цього проєкту.");

@@ -19,6 +19,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository membershipRepository,
             [Service] IUserRepository userRepository)
         {
             var userId = claimsPrincipal.GetUserId();
@@ -39,7 +40,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             }
 
             var hasProjectAccess = currentUser.IsAdmin ||
-                await projectRepository.IsUserInProjectAsync(
+                await membershipRepository.IsUserInProjectAsync(
                     input.ProjectId,
                     userId
                 );
@@ -116,7 +117,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid statusId,
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository membershipRepository,
             [Service] IUserRepository userRepository)
         {
             var userIdValue =
@@ -153,7 +154,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             }
 
             var hasAccess = currentUser.IsAdmin ||
-                await projectRepository.IsUserInProjectAsync(
+                await membershipRepository.IsUserInProjectAsync(
                     task.ProjectId,
                     currentUserId
                 );
@@ -200,7 +201,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             UpdateTaskInput input,
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
-            [Service] IProjectRepository projectRepository,
+            [Service] IProjectMembershipRepository membershipRepository,
             [Service] IUserRepository userRepository)
         {
             var currentUserId = claimsPrincipal.GetUserId();
@@ -214,7 +215,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (currentUser == null)
                 throw new GraphQLException("Користувача не знайдено.");
 
-            var hasAccess = currentUser.IsAdmin || await projectRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
+            var hasAccess = currentUser.IsAdmin || await membershipRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
 
             if (!hasAccess)
                 throw new GraphQLException("У вас немає доступу до редагування цієї таски.");
@@ -249,7 +250,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IUserRepository userRepository,
-            [Service] IProjectRepository projectRepository)
+            [Service] IProjectMembershipRepository membershipRepository)
         {
             if (input.HoursSpent <= 0)
                 throw new GraphQLException("Вкажіть коректний час.");
@@ -262,7 +263,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             var existingTask = await taskRepository.GetTaskByIdAsync(input.TaskId);
             if (existingTask == null)
                 throw new GraphQLException("Таску не знайдено.");
-            var hasAccess = user.IsAdmin || await projectRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
+            var hasAccess = user.IsAdmin || await membershipRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
             if (!hasAccess)
                 throw new GraphQLException("У вас немає доступу до цієї таски.");
 
@@ -322,7 +323,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IUserRepository userRepository,
-            [Service] IProjectRepository projectRepository)
+            [Service] IProjectMembershipRepository membershipRepository)
         {
             var userId = claimsPrincipal.GetUserId();
             var currentUser = await userRepository.GetUserByIdAsync(userId);
@@ -337,7 +338,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             }
 
             var hasProjectAccess = currentUser.IsAdmin ||
-                await projectRepository.IsUserInProjectAsync(
+                await membershipRepository.IsUserInProjectAsync(
                     task.ProjectId,
                     userId
                 );
