@@ -17,13 +17,7 @@ namespace TaskManager.API.GraphQL.Mutations
         {
             await accessService.EnsureAdminAsync(claimsPrincipal, "Тільки адміністратор може створювати запрошення.");
 
-            try
-            {
-                return await userRepository.GenerateInviteAsync(email, isAdmin);
-            }catch (Exception ex)
-            {
-                throw new GraphQLException($"Помилка беку: {ex.Message}");
-            }
+            return await userRepository.GenerateInviteAsync(email, isAdmin);
         }
 
         public async Task<bool> CompleteRegistrationAsync(string token, string name, string password,
