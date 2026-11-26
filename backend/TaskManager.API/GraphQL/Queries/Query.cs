@@ -35,16 +35,12 @@ namespace TaskManager.API.GraphQL.Queries
             return await projectRepository.GetManagerProjectsWithRoleHoursAsync(userId);
         }
 
-        // БЕЗ [Authorize] тимчасово
+        [Authorize]
         public async Task<IEnumerable<AvailableProjectDto>> GetAvailableProjectsDashboardAsync(
             ClaimsPrincipal claimsPrincipal,
             [Service] IProjectRepository projectRepository)
         {
-            if (!claimsPrincipal.TryGetUserId(out var userId))
-            {
-                return Enumerable.Empty<AvailableProjectDto>();
-            }
-
+            var userId = claimsPrincipal.GetUserId();
             return await projectRepository.GetAvailableProjectsAsync(userId);
         }
     }

@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using HotChocolate.Authorization;
 using TaskManager.API.DTOs;
 using TaskManager.API.Extensions;
 using TaskManager.API.Repositories;
@@ -43,6 +44,7 @@ namespace TaskManager.API.GraphQL.Mutations
             };
         }
 
+        [Authorize]
         public async Task<bool> LogoutAsync(ClaimsPrincipal claimsPrincipal,
             [Service] IUserRepository userRepository)
         {
