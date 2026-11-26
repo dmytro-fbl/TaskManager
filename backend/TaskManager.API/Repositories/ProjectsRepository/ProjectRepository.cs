@@ -13,10 +13,12 @@ namespace TaskManager.API.Repositories.ProjectsRepository
     public class ProjectRepository : IProjectRepository
     {
         private readonly NpgsqlDataSource _dataSource;
+        private readonly ILogger<ProjectRepository> _logger;
 
-        public ProjectRepository(NpgsqlDataSource dataSource)
+        public ProjectRepository(NpgsqlDataSource dataSource, ILogger<ProjectRepository> logger)
         {
             _dataSource = dataSource;
+            _logger = logger;
         }
 
         public async Task<bool> CreateProjectInvitationForExistingUserAsync(
@@ -99,7 +101,8 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             }
             catch (Exception ex) when (ex is not GraphQLException)
             {
-                throw new GraphQLException($"Помилка при створенні запрошення: {ex.Message}");
+                _logger.LogError(ex, "Failed to create invitation for project {ProjectId}", projectId);
+                throw new GraphQLException("Не вдалося створити запрошення. Спробуйте пізніше.");
             }
         }
 
@@ -388,7 +391,8 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             }
             catch (Exception ex) when (!(ex is GraphQLException))
             {
-                throw new GraphQLException($"Помилка при додаванні користувача до проекту: {ex.Message}");
+                _logger.LogError(ex, "Failed to add user {Email} to project {ProjectId}", email, projectId);
+                throw new GraphQLException("Не вдалося додати користувача до проєкту. Спробуйте пізніше.");
             }
         }
 
@@ -561,7 +565,8 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             catch (Exception ex) when (ex is not GraphQLException)
             {
                 await tx.RollbackAsync();
-                throw new GraphQLException($"Помилка при прийнятті запрошення: {ex.Message}", ex);
+                _logger.LogError(ex, "Failed to accept project invitation");
+                throw new GraphQLException("Не вдалося прийняти запрошення. Спробуйте пізніше.", ex);
             }
         }
 

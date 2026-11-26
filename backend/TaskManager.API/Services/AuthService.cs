@@ -45,7 +45,7 @@ namespace TaskManager.API.Services
 
             var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
 
-            await _userRepository.UpdateRefreshTokenAsync(user.Id, refreshToken, refreshTokenExpiry);
+            await _userRepository.UpdateRefreshTokenAsync(user.Id, RefreshTokenHasher.Hash(refreshToken), refreshTokenExpiry);
 
             return new AuthPayload
             {
