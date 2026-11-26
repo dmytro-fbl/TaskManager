@@ -4,6 +4,7 @@ using TaskManager.API.DTOs;
 using TaskManager.API.Extensions;
 using TaskManager.API.Repositories;
 using TaskManager.API.Services;
+using TaskManager.API.Utils;
 
 namespace TaskManager.API.GraphQL.Mutations
 {
@@ -21,7 +22,7 @@ namespace TaskManager.API.GraphQL.Mutations
         {
             var user = await userRepository.GetUserByEmail(email);
 
-            if(user == null || user.RefreshToken != refreshToken)
+            if(user == null || !RefreshTokenHasher.Matches(refreshToken, user.RefreshToken))
             {
                 throw new GraphQLException("Не вілідний токен оновлення");
             }
@@ -35,7 +36,7 @@ namespace TaskManager.API.GraphQL.Mutations
             var newRefreshToken = tokenService.GenerateRefreshToken();
             var newExpiryTime = DateTime.UtcNow.AddDays(7); 
 
-            await userRepository.UpdateRefreshTokenAsync(user.Id, newRefreshToken, newExpiryTime);
+            await userRepository.UpdateRefreshTokenAsync(user.Id, RefreshTokenHasher.Hash(newRefreshToken), newExpiryTime);
 
             return new AuthPayload
             {
