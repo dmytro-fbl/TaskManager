@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.100" />
     <PackageReference Include="HotChocolate.AspNetCore" Version="16.5.0" />
     <PackageReference Include="HotChocolate.AspNetCore.Authorization" Version="16.5.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.29" />

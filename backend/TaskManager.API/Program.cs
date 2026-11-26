@@ -4,6 +4,7 @@ using Npgsql;
 using System.Text;
 using TaskManager.API.DTOs.Dashboard;
 using TaskManager.API.GraphQL.Extensions;
+using TaskManager.API.Infrastructure;
 using TaskManager.API.GraphQL.Mutations;
 using TaskManager.API.GraphQL.Mutations.Projects;
 using TaskManager.API.GraphQL.Mutations.Tasks;
@@ -40,6 +41,7 @@ namespace TaskManager.API
             });
 
             // 2. DB
+            DapperConfig.Configure();
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddNpgsqlDataSource(connectionString);
 
