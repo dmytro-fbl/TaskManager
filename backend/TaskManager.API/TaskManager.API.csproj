@@ -12,7 +12,6 @@
     <PackageReference Include="HotChocolate.AspNetCore.Authorization" Version="16.5.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.29" />
     <PackageReference Include="Npgsql.DependencyInjection" Version="10.0.3" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
   </ItemGroup>
 
 </Project>

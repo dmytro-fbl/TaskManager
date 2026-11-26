@@ -119,7 +119,6 @@ namespace TaskManager.API
             builder.Services.AddScoped<ITaskRepository, TaskRepository>();
             builder.Services.AddScoped<ITaskCommentsRepository, TaskCommentsRepository>();
 
-            builder.Services.AddScoped<IUserServices, UserServices>();
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IAuthService, AuthService>();
             builder.Services.AddScoped<ITaskCommentService, TaskCommentService>();
