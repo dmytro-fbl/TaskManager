@@ -4,6 +4,7 @@ using TaskManager.API.Extensions;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Repositories.TasksRepository;
+using TaskManager.API.Services;
 
 namespace TaskManager.API.GraphQL.Mutations.Tasks
 {
@@ -19,7 +20,8 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IProjectMembershipRepository projectRepository,
-            [Service] IUserRepository userRepository)
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
         {
             var currentUserId = claimsPrincipal.GetUserId();
 
@@ -36,6 +38,8 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             {
                 throw new GraphQLException("Таску не знайдено.");
             }
+
+            await accessService.EnsureProjectNotArchivedAsync(task.ProjectId);
 
             var currentUser = await userRepository.GetUserByIdAsync(
                 currentUserId
@@ -121,7 +125,8 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IProjectMembershipRepository projectRepository,
-            [Service] IUserRepository userRepository)
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
         {
             var currentUserId = claimsPrincipal.GetUserId();
 
@@ -131,6 +136,8 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
             {
                 throw new GraphQLException("Таску не знайдено.");
             }
+
+            await accessService.EnsureProjectNotArchivedAsync(task.ProjectId);
 
             var currentUser = await userRepository.GetUserByIdAsync(
                 currentUserId
