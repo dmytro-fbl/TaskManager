@@ -94,6 +94,11 @@ export const GET_PROJECTS = gql`
 
 export const GET_PROJECT_DETAILS_FOR_TASK = gql`
     query GetProjectDetailsForTask($projectId: UUID!) {
+        project(id: $projectId) {
+            id
+            isArchived
+            status
+        }
         projectTasks(projectId: $projectId) {
             id
             projectId 

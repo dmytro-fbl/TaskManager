@@ -126,6 +126,11 @@ type Worklog = {
 };
 
 type ProjectDetailsResponse = {
+    project?: {
+        id: string;
+        isArchived: boolean;
+        status: string;
+    } | null;
     projectTasks: Task[];
     projectStatuses: ProjectStatus[];
     projectMemberships: Membership[];
@@ -246,7 +251,12 @@ export const TaskDetailsPage: React.FC = () => {
         (m) => m.userId === currentUserId
     );
 
+    const isProjectArchived =
+        Boolean(projectQuery.data?.project?.isArchived) ||
+        projectQuery.data?.project?.status === "archived";
+
     const canLogWork = isAdmin || isMember;
+    const canEditTask = Boolean(canLogWork && !isProjectArchived);
 
     const handleLogWork = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -453,6 +463,12 @@ export const TaskDetailsPage: React.FC = () => {
                 <FiArrowLeft size={16}/> Назад до проєкту
             </button>
 
+            {isProjectArchived && (
+                <div className="rounded-xl border-l-4 border-yellow-500 bg-yellow-50 p-4 text-sm font-medium text-yellow-800 shadow-xs">
+                    Проєкт знаходиться в архіві. Таска доступна лише для перегляду — будь-які зміни заборонені.
+                </div>
+            )}
+
             <div
                 className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                 <div className="space-y-2">
@@ -562,7 +578,7 @@ export const TaskDetailsPage: React.FC = () => {
                             )}
                         </div>
 
-                        {canLogWork && (
+                        {canEditTask && (
                             <form onSubmit={handleLogWork}
                                   className="mb-8 rounded-xl border border-blue-100 bg-blue-50/30 p-5 space-y-4">
                                 <h4 className="text-xs font-bold text-blue-900 uppercase">Записати витрачений час</h4>
@@ -608,7 +624,7 @@ export const TaskDetailsPage: React.FC = () => {
                                 <div className="divide-y divide-gray-100 rounded-xl border border-gray-100">
                                     {worklogs.map((log) => {
                                         const isOwner = log.userId === currentUserId;
-                                        const canDelete = isOwner || isAdmin;
+                                        const canDelete = (isOwner || isAdmin) && !isProjectArchived;
                                         const isEditing = editingWorkLogId === log.id;
 
                                         if (isEditing) {
@@ -686,7 +702,7 @@ export const TaskDetailsPage: React.FC = () => {
                                                         className="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded text-sm">
                                                         +{Number(log.hoursSpent).toFixed(1)} год
                                                     </span>
-                                                    {isOwner && (
+                                                    {isOwner && !isProjectArchived && (
                                                         <button
                                                             type="button"
                                                             onClick={() => handleStartEditWorkLog(log)}
@@ -720,7 +736,7 @@ export const TaskDetailsPage: React.FC = () => {
                         taskId={task.id}
                         memberships={memberships}
                         currentUserId={currentUserId}
-                        canComment={canLogWork}
+                        canComment={canEditTask}
                     />
                 </div>
 
@@ -756,7 +772,7 @@ export const TaskDetailsPage: React.FC = () => {
                             )}
                         </div>
 
-                        {canLogWork && (
+                        {canEditTask && (
                             <button
                                 onClick={() => setIsAddMemberOpen(true)}
                                 className="w-full mb-3 flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"

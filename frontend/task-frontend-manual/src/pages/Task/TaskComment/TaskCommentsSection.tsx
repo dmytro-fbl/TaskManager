@@ -47,7 +47,7 @@ type VersionsResponse = {
     taskCommentVersions: TaskCommentVersion[];
 };
 
-export const TaskCommentsSection: React.FC<Props> = ({ taskId, memberships, currentUserId, canComment }) => {
+export const TaskCommentsSection: React.FC<Props> = ({ taskId, memberships, currentUserId, canComment = true }) => {
     const [newComment, setNewComment] = useState("");
     const [replyingTo, setReplyingTo] = useState<string | null>(null);
     const [error, setError] = useState("");
@@ -290,7 +290,7 @@ export const TaskCommentsSection: React.FC<Props> = ({ taskId, memberships, curr
                                         </div>
                                     )}
 
-                                    {!comment.isDeleted && editingId !== comment.id && (
+                                    {canComment && !comment.isDeleted && editingId !== comment.id && (
                                         <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100/50">
                                             {!comment.parentCommentId && (
                                                 <button 
@@ -341,6 +341,7 @@ export const TaskCommentsSection: React.FC<Props> = ({ taskId, memberships, curr
                 )}
             </div>
 
+            {canComment ? (
             <form onSubmit={handleSubmit} className="relative">
                 {replyingTo && (
                     <div className="flex justify-between items-center bg-blue-50 text-blue-700 px-3 py-1.5 rounded-t-lg text-xs font-medium border border-blue-100 border-b-0">
@@ -373,6 +374,11 @@ export const TaskCommentsSection: React.FC<Props> = ({ taskId, memberships, curr
                     </button>
                 </div>
             </form>
+            ) : (
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-500 text-center">
+                    Коментування недоступне в режимі перегляду або для архівного проєкту.
+                </div>
+            )}
         </div>
     );
 };
