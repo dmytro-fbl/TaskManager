@@ -238,14 +238,21 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             try
             {
                 const string selectSql = @"
-                    SELECT id, project_id, email, project_role, role_label_id, expires_at, accepted_at
-                    FROM app.invitations
-                    WHERE token = @token;";
+                    SELECT i.id, i.project_id, i.email, i.project_role, i.role_label_id, i.expires_at, i.accepted_at,
+                           p.is_archived, p.status AS project_status
+                    FROM app.invitations i
+                    JOIN app.projects p ON p.id = i.project_id
+                    WHERE i.token = @token;";
 
                 var invitation = await connection.QuerySingleOrDefaultAsync<InvitationRow>(selectSql, new { token }, tx);
                 if (invitation is null || invitation.ExpiresAt <= DateTime.UtcNow || invitation.AcceptedAt is not null)
                 {
                     return false;
+                }
+
+                if (invitation.IsArchived || invitation.ProjectStatus == ProjectStatuses.Archived)
+                {
+                    throw new GraphQLException("Проєкт в архіві. Будь-які зміни заборонені.");
                 }
 
                 const string userSql = "SELECT email FROM app.users WHERE id = @userId;";
@@ -304,6 +311,8 @@ namespace TaskManager.API.Repositories.ProjectsRepository
             public Guid? RoleLabelId { get; set; }
             public DateTime ExpiresAt { get; set; }
             public DateTime? AcceptedAt { get; set; }
+            public bool IsArchived { get; set; }
+            public string ProjectStatus { get; set; } = string.Empty;
         }
     }
 }
