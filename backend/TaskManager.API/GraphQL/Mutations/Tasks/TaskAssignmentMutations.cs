@@ -1,6 +1,7 @@
 ﻿using System.Security.Claims;
 using HotChocolate.Authorization;
 using TaskManager.API.Extensions;
+using TaskManager.API.Models.Constants;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Repositories.TasksRepository;
@@ -57,7 +58,7 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
 
             var canManageAssignments =
                 currentUser.IsAdmin ||
-                currentUserRole == "manager";
+                currentUserRole == ProjectRoles.Manager;
 
             if (!canManageAssignments)
             {
@@ -119,6 +120,62 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
         }
 
         [Authorize]
+        public async Task<bool> UpdateTaskAssignmentAsync(
+            Guid taskId,
+            Guid userId,
+            decimal estimatedHours,
+            Guid? roleId,
+            ClaimsPrincipal claimsPrincipal,
+            [Service] ITaskRepository taskRepository,
+            [Service] IProjectMembershipRepository projectRepository,
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
+        {
+            if (estimatedHours <= 0)
+            {
+                throw new GraphQLException("Кількість годин має бути більшою за нуль.");
+            }
+
+            var currentUserId = claimsPrincipal.GetUserId();
+            var task = await taskRepository.GetTaskByIdAsync(taskId);
+            if (task == null)
+            {
+                throw new GraphQLException("Таску не знайдено.");
+            }
+
+            await accessService.EnsureProjectNotArchivedAsync(task.ProjectId);
+
+            var currentUser = await userRepository.GetUserByIdAsync(currentUserId);
+            if (currentUser == null)
+            {
+                throw new GraphQLException("Поточного користувача не знайдено.");
+            }
+
+            var currentUserRole = await projectRepository.GetUserProjectRoleAsync(task.ProjectId, currentUserId);
+            if (!currentUser.IsAdmin && currentUserRole != ProjectRoles.Manager)
+            {
+                throw new GraphQLException("Тільки менеджер або адміністратор може редагувати призначення.");
+            }
+
+            if (roleId.HasValue)
+            {
+                var isValidRole = await taskRepository.IsRoleInProjectAsync(task.ProjectId, roleId.Value);
+                if (!isValidRole)
+                {
+                    throw new GraphQLException("Вказана роль не належить цьому проєкту.");
+                }
+            }
+
+            var updated = await taskRepository.UpdateTaskAssignmentAsync(taskId, userId, roleId, estimatedHours);
+            if (!updated)
+            {
+                throw new GraphQLException("Призначення користувача на цю таску не знайдено.");
+            }
+
+            return true;
+        }
+
+        [Authorize]
         public async Task<bool> RemoveUserFromTaskAsync(
             Guid taskId,
             Guid userId,
@@ -155,7 +212,7 @@ namespace TaskManager.API.GraphQL.Mutations.Tasks
 
             var canManageAssignments =
                 currentUser.IsAdmin ||
-                currentUserRole == "manager";
+                currentUserRole == ProjectRoles.Manager;
 
             if (!canManageAssignments)
             {

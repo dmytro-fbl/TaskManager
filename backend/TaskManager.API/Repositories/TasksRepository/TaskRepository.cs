@@ -106,9 +106,7 @@ namespace TaskManager.API.Repositories.TasksRepository
                     (id, task_id, user_id, role_id, estimated_hours, assigned_by, assigned_at)
                 VALUES
                     (@id, @taskId, @userId, @roleId, @estimatedHours, @assignedBy, @assignedAt)
-                ON CONFLICT (task_id, user_id) DO UPDATE
-                SET role_id = EXCLUDED.role_id,
-                    estimated_hours = EXCLUDED.estimated_hours;";
+                ON CONFLICT (task_id, user_id) DO NOTHING;";
 
             return await connection.ExecuteAsync(sql, new
             {
@@ -120,6 +118,20 @@ namespace TaskManager.API.Repositories.TasksRepository
                 assignment.AssignedBy,
                 assignment.AssignedAt
             }) > 0;
+        }
+
+        public async Task<bool> UpdateTaskAssignmentAsync(Guid taskId, Guid userId, Guid? roleId, decimal estimatedHours)
+        {
+            await using var connection = await _dataSource.OpenConnectionAsync();
+
+            const string sql = @"
+                UPDATE app.task_assignments
+                SET role_id = @roleId,
+                    estimated_hours = @estimatedHours
+                WHERE task_id = @taskId
+                  AND user_id = @userId;";
+
+            return await connection.ExecuteAsync(sql, new { taskId, userId, roleId, estimatedHours }) > 0;
         }
 
         public async Task<bool> RemoveTaskAssignmentAsync(Guid taskId, Guid userId)
