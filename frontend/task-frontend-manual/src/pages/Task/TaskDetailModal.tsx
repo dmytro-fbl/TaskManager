@@ -598,6 +598,10 @@ export const TaskDetailsPage: React.FC = () => {
                             </h4>
                             {worklogsQuery.loading ? (
                                 <div className="text-sm text-gray-400">Завантаження...</div>
+                            ) : worklogsQuery.error ? (
+                                <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
+                                    {getFriendlyErrorMessage(worklogsQuery.error as any) ?? "Не вдалося завантажити історію роботи."}
+                                </div>
                             ) : worklogs.length === 0 ? (
                                 <div className="text-sm text-gray-400 italic">Час ще не залоговано.</div>
                             ) : (

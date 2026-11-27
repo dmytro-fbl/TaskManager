@@ -224,7 +224,7 @@ namespace TaskManager.API.Repositories.TasksRepository
                 taskId = input.TaskId,
                 userId,
                 hoursSpent = input.HoursSpent,
-                logDate = now,
+                logDate = DateOnly.FromDateTime(now.UtcDateTime),
                 description = string.IsNullOrWhiteSpace(input.Comment) ? null : input.Comment.Trim(),
                 createdAt = now
             }) > 0;
