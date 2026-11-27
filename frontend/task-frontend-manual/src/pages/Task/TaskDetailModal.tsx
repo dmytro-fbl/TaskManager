@@ -22,7 +22,7 @@ import {getFriendlyErrorMessage} from "../../utils/errorHandler";
 
 import {GET_PROJECT_DETAILS_FOR_TASK} from "../../graphql/queries/project/projectQuery";
 import {GET_TASK_WORKLOGS, LOG_WORK, UPDATE_WORKLOG, DELETE_WORKLOG, GET_TASK_ASSIGNMENTS} from "../../graphql/queries/task/taskQueries";
-import {ASSIGN_USER_TO_TASK} from "../../graphql/mutations/taskmut/taskMutation";
+import {ASSIGN_USER_TO_TASK, UPDATE_TASK_ASSIGNMENT, REMOVE_USER_FROM_TASK} from "../../graphql/mutations/taskmut/taskMutation";
 
 import {TaskCommentsSection} from "./TaskComment/TaskCommentsSection";
 
@@ -126,6 +126,11 @@ type Worklog = {
 };
 
 type ProjectDetailsResponse = {
+    project?: {
+        id: string;
+        isArchived: boolean;
+        status: string;
+    } | null;
     projectTasks: Task[];
     projectStatuses: ProjectStatus[];
     projectMemberships: Membership[];
@@ -157,6 +162,11 @@ export const TaskDetailsPage: React.FC = () => {
     const [selectedUserId, setSelectedUserId] = useState("");
     const [selectedRoleId, setSelectedRoleId] = useState("");
     const [selectedHours, setSelectedHours] = useState("");
+    const [assignmentError, setAssignmentError] = useState("");
+
+    const [editingAssignmentUserId, setEditingAssignmentUserId] = useState<string | null>(null);
+    const [editAssignmentRoleId, setEditAssignmentRoleId] = useState("");
+    const [editAssignmentHours, setEditAssignmentHours] = useState("");
 
     const [isAddingRole, setIsAddingRole] = useState(false);
     const [newRoleName, setNewRoleName] = useState("");
@@ -195,10 +205,32 @@ export const TaskDetailsPage: React.FC = () => {
             setSelectedUserId("");
             setSelectedRoleId("");
             setSelectedHours("");
+            setAssignmentError("");
             assignmentsQuery.refetch();
         },
         onError: (err) => {
-            alert(getFriendlyErrorMessage(err) ?? "Не вдалося додати учасника");
+            setAssignmentError(getFriendlyErrorMessage(err) ?? "Не вдалося додати учасника");
+        }
+    });
+
+    const [updateTaskAssignment, {loading: updatingAssignment}] = useMutation(UPDATE_TASK_ASSIGNMENT, {
+        onCompleted: () => {
+            setEditingAssignmentUserId(null);
+            setAssignmentError("");
+            assignmentsQuery.refetch();
+        },
+        onError: (err) => {
+            setAssignmentError(getFriendlyErrorMessage(err) ?? "Не вдалося оновити призначення");
+        }
+    });
+
+    const [removeUserFromTask, {loading: removingAssignment}] = useMutation(REMOVE_USER_FROM_TASK, {
+        onCompleted: () => {
+            setAssignmentError("");
+            assignmentsQuery.refetch();
+        },
+        onError: (err) => {
+            setAssignmentError(getFriendlyErrorMessage(err) ?? "Не вдалося видалити учасника");
         }
     });
 
@@ -230,6 +262,8 @@ export const TaskDetailsPage: React.FC = () => {
     const assignments = assignmentsQuery.data?.taskAssignments ?? [];
     const memberships = projectQuery.data?.projectMemberships ?? [];
     const roles = projectQuery.data?.projectRoles ?? [];
+    const assignedUserIds = new Set(assignments.map((a) => a.userId));
+    const availableMembers = memberships.filter((m) => !assignedUserIds.has(m.userId));
 
     const worklogs = worklogsQuery.data?.taskWorklogs ?? [];
     const totalHoursLogged = worklogs.reduce((sum, item) => sum + Number(item.hoursSpent || 0), 0);
@@ -246,7 +280,12 @@ export const TaskDetailsPage: React.FC = () => {
         (m) => m.userId === currentUserId
     );
 
+    const isProjectArchived =
+        Boolean(projectQuery.data?.project?.isArchived) ||
+        projectQuery.data?.project?.status === "archived";
+
     const canLogWork = isAdmin || isMember;
+    const canEditTask = Boolean(canLogWork && !isProjectArchived);
 
     const handleLogWork = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -332,8 +371,10 @@ export const TaskDetailsPage: React.FC = () => {
 
     const handleAddMember = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedUserId || !selectedHours) {
-            alert("Оберіть користувача і вкажіть години");
+        setAssignmentError("");
+        const hours = Number(selectedHours);
+        if (!selectedUserId || isNaN(hours) || hours <= 0) {
+            setAssignmentError("Оберіть користувача і вкажіть коректну кількість годин.");
             return;
         }
 
@@ -341,8 +382,46 @@ export const TaskDetailsPage: React.FC = () => {
             variables: {
                 taskId: task.id,
                 userId: selectedUserId,
-                estimatedHours: Number(selectedHours),
+                estimatedHours: hours,
                 roleId: selectedRoleId || null,
+            },
+        });
+    };
+
+    const handleStartEditAssignment = (assignment: TaskAssignment) => {
+        setEditingAssignmentUserId(assignment.userId);
+        setEditAssignmentRoleId(assignment.roleId || "");
+        setEditAssignmentHours(String(assignment.estimatedHours));
+        setAssignmentError("");
+    };
+
+    const handleSaveEditAssignment = async (userId: string) => {
+        setAssignmentError("");
+        const hours = Number(editAssignmentHours);
+        if (isNaN(hours) || hours <= 0) {
+            setAssignmentError("Кількість годин повинна бути більшою за 0.");
+            return;
+        }
+
+        await updateTaskAssignment({
+            variables: {
+                taskId: task.id,
+                userId,
+                estimatedHours: hours,
+                roleId: editAssignmentRoleId || null,
+            },
+        });
+    };
+
+    const handleRemoveAssignment = async (userId: string, name?: string) => {
+        if (!window.confirm(`Прибрати ${name ?? "цього користувача"} із завдання?`)) {
+            return;
+        }
+        setAssignmentError("");
+        await removeUserFromTask({
+            variables: {
+                taskId: task.id,
+                userId,
             },
         });
     };
@@ -453,6 +532,12 @@ export const TaskDetailsPage: React.FC = () => {
                 <FiArrowLeft size={16}/> Назад до проєкту
             </button>
 
+            {isProjectArchived && (
+                <div className="rounded-xl border-l-4 border-yellow-500 bg-yellow-50 p-4 text-sm font-medium text-yellow-800 shadow-xs">
+                    Проєкт знаходиться в архіві. Таска доступна лише для перегляду — будь-які зміни заборонені.
+                </div>
+            )}
+
             <div
                 className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                 <div className="space-y-2">
@@ -562,7 +647,7 @@ export const TaskDetailsPage: React.FC = () => {
                             )}
                         </div>
 
-                        {canLogWork && (
+                        {canEditTask && (
                             <form onSubmit={handleLogWork}
                                   className="mb-8 rounded-xl border border-blue-100 bg-blue-50/30 p-5 space-y-4">
                                 <h4 className="text-xs font-bold text-blue-900 uppercase">Записати витрачений час</h4>
@@ -598,13 +683,17 @@ export const TaskDetailsPage: React.FC = () => {
                             </h4>
                             {worklogsQuery.loading ? (
                                 <div className="text-sm text-gray-400">Завантаження...</div>
+                            ) : worklogsQuery.error ? (
+                                <div className="text-xs text-red-600 bg-red-50 p-3 rounded-lg border border-red-100">
+                                    {getFriendlyErrorMessage(worklogsQuery.error as any) ?? "Не вдалося завантажити історію роботи."}
+                                </div>
                             ) : worklogs.length === 0 ? (
                                 <div className="text-sm text-gray-400 italic">Час ще не залоговано.</div>
                             ) : (
                                 <div className="divide-y divide-gray-100 rounded-xl border border-gray-100">
                                     {worklogs.map((log) => {
                                         const isOwner = log.userId === currentUserId;
-                                        const canDelete = isOwner || isAdmin;
+                                        const canDelete = (isOwner || isAdmin) && !isProjectArchived;
                                         const isEditing = editingWorkLogId === log.id;
 
                                         if (isEditing) {
@@ -682,7 +771,7 @@ export const TaskDetailsPage: React.FC = () => {
                                                         className="font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded text-sm">
                                                         +{Number(log.hoursSpent).toFixed(1)} год
                                                     </span>
-                                                    {isOwner && (
+                                                    {isOwner && !isProjectArchived && (
                                                         <button
                                                             type="button"
                                                             onClick={() => handleStartEditWorkLog(log)}
@@ -716,7 +805,7 @@ export const TaskDetailsPage: React.FC = () => {
                         taskId={task.id}
                         memberships={memberships}
                         currentUserId={currentUserId}
-                        canComment={canLogWork}
+                        canComment={canEditTask}
                     />
                 </div>
 
@@ -752,13 +841,19 @@ export const TaskDetailsPage: React.FC = () => {
                             )}
                         </div>
 
-                        {canLogWork && (
+                        {canEditTask && availableMembers.length > 0 && (
                             <button
-                                onClick={() => setIsAddMemberOpen(true)}
+                                onClick={() => { setIsAddMemberOpen(true); setAssignmentError(""); }}
                                 className="w-full mb-3 flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
                             >
                                 <FiPlus size={14}/> Додати учасника
                             </button>
+                        )}
+
+                        {assignmentError && (
+                            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2.5 text-xs text-red-700">
+                                {assignmentError}
+                            </div>
                         )}
 
                         <div className="space-y-2">
@@ -766,13 +861,84 @@ export const TaskDetailsPage: React.FC = () => {
                                 assignments.map((assignment) => {
                                     const assignee = memberships.find((m) => m.userId === assignment.userId)?.user;
                                     const role = roles.find((r) => r.id === assignment.roleId);
+                                    const isEditingAssignment = editingAssignmentUserId === assignment.userId;
+
+                                    if (isEditingAssignment) {
+                                        return (
+                                            <div key={assignment.id}
+                                                 className="p-3 bg-blue-50/50 rounded-xl border border-blue-200 space-y-2">
+                                                <div className="text-sm font-bold text-[#1f2937]">
+                                                    {assignee?.name ?? "Невідомий користувач"}
+                                                </div>
+                                                <select
+                                                    value={editAssignmentRoleId}
+                                                    onChange={(e) => setEditAssignmentRoleId(e.target.value)}
+                                                    className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-blue-500"
+                                                >
+                                                    <option value="">Без ролі</option>
+                                                    {roles.map((r) => (
+                                                        <option key={r.id} value={r.id}>{r.name}</option>
+                                                    ))}
+                                                </select>
+                                                <input
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0.1"
+                                                    value={editAssignmentHours}
+                                                    onChange={(e) => setEditAssignmentHours(e.target.value)}
+                                                    className="w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-blue-500"
+                                                    placeholder="Години"
+                                                />
+                                                <div className="flex gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        disabled={updatingAssignment}
+                                                        onClick={() => handleSaveEditAssignment(assignment.userId)}
+                                                        className="flex-1 rounded-lg bg-blue-600 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                                                    >
+                                                        {updatingAssignment ? "..." : "Зберегти"}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingAssignmentUserId(null)}
+                                                        className="rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                                                    >
+                                                        Скасувати
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
 
                                     return (
                                         <div key={assignment.id}
                                              className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex flex-col gap-1.5">
-                                            <span className="text-sm font-bold text-[#1f2937]">
-                                                {assignee?.name ?? "Невідомий користувач"}
-                                            </span>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-sm font-bold text-[#1f2937]">
+                                                    {assignee?.name ?? "Невідомий користувач"}
+                                                </span>
+                                                {canEditTask && (
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleStartEditAssignment(assignment)}
+                                                            className="p-1 text-gray-400 hover:text-blue-600 rounded transition"
+                                                            title="Редагувати години або роль"
+                                                        >
+                                                            <FiEdit2 size={13} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            disabled={removingAssignment}
+                                                            onClick={() => handleRemoveAssignment(assignment.userId, assignee?.name)}
+                                                            className="p-1 text-gray-400 hover:text-red-600 rounded transition disabled:opacity-50"
+                                                            title="Видалити із завдання"
+                                                        >
+                                                            <FiTrash2 size={13} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                             <div className="flex items-center justify-between">
                                                 {role ? (
                                                     <span
@@ -809,7 +975,7 @@ export const TaskDetailsPage: React.FC = () => {
                                     required
                                 >
                                     <option value="">Оберіть користувача</option>
-                                    {memberships.map((m) => (
+                                    {availableMembers.map((m) => (
                                         <option key={m.userId} value={m.userId}>
                                             {m.user.name}
                                         </option>

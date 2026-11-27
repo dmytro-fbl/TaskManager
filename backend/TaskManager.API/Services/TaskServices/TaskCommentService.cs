@@ -15,20 +15,23 @@ namespace TaskManager.API.Services
         private readonly ITaskRepository _taskRepository;
         private readonly IProjectMembershipRepository _membershipRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IAccessService _accessService;
 
         public TaskCommentService(
             ITaskCommentsRepository commentRepository,
             ITaskRepository taskRepository,
             IProjectMembershipRepository membershipRepository,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            IAccessService accessService)
         {
             _commentRepository = commentRepository;
             _taskRepository = taskRepository;
             _membershipRepository = membershipRepository;
             _userRepository = userRepository;
+            _accessService = accessService;
         }
 
-        private async Task CheckProjectAccessAsync(Guid taskId, Guid userId)
+        private async Task<Guid> CheckProjectAccessAsync(Guid taskId, Guid userId)
         {
             var task = await _taskRepository.GetTaskByIdAsync(taskId);
             if (task == null) throw new GraphQLException("Таску не знайдено.");
@@ -40,6 +43,8 @@ namespace TaskManager.API.Services
 
             if (!hasAccess)
                 throw new GraphQLException("У вас немає доступу до цього проєкту.");
+
+            return task.ProjectId;
         }
 
         public async Task<IEnumerable<TaskComment>> GetCommentsByTaskIdAsync(Guid taskId, Guid userId)
@@ -59,7 +64,8 @@ namespace TaskManager.API.Services
 
         public async Task<TaskComment> CreateCommentAsync(CreateTaskCommentInput input, Guid userId)
         {
-            await CheckProjectAccessAsync(input.TaskId, userId);
+            var projectId = await CheckProjectAccessAsync(input.TaskId, userId);
+            await _accessService.EnsureProjectNotArchivedAsync(projectId);
 
             if (string.IsNullOrWhiteSpace(input.Body))
                 throw new GraphQLException("Коментар не може бути порожнім.");
@@ -96,6 +102,9 @@ namespace TaskManager.API.Services
             if (comment == null) throw new GraphQLException("Коментар не знайдено.");
             if (comment.IsDeleted) throw new GraphQLException("Не можна редагувати видалений коментар.");
 
+            var task = await _taskRepository.GetTaskByIdAsync(comment.TaskId);
+            if (task != null) await _accessService.EnsureProjectNotArchivedAsync(task.ProjectId);
+
             var user = await _userRepository.GetUserByIdAsync(userId);
 
             if (comment.AuthorId != userId && (user == null || !user.IsAdmin))
@@ -112,6 +121,9 @@ namespace TaskManager.API.Services
             var comment = await _commentRepository.GetByIdAsync(input.CommentId);
             if (comment == null) throw new GraphQLException("Коментар не знайдено.");
             if (comment.IsDeleted) throw new GraphQLException("Коментар вже видалено.");
+
+            var task = await _taskRepository.GetTaskByIdAsync(comment.TaskId);
+            if (task != null) await _accessService.EnsureProjectNotArchivedAsync(task.ProjectId);
 
             var user = await _userRepository.GetUserByIdAsync(userId);
 

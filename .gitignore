@@ -364,3 +364,6 @@ FodyWeavers.xsd
 # Frontend build outputs
 dist/
 dist-ssr/
+
+# JetBrains IDEs
+.idea/

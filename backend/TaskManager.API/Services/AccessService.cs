@@ -2,6 +2,7 @@ using System.Security.Claims;
 using TaskManager.API.Extensions;
 using TaskManager.API.Models;
 using TaskManager.API.Models.Constants;
+using TaskManager.API.Models.ProjectsTables;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 
@@ -10,13 +11,16 @@ namespace TaskManager.API.Services
     public class AccessService : IAccessService
     {
         private readonly IUserRepository _userRepository;
+        private readonly IProjectRepository _projectRepository;
         private readonly IProjectMembershipRepository _membershipRepository;
 
         public AccessService(
             IUserRepository userRepository,
+            IProjectRepository projectRepository,
             IProjectMembershipRepository membershipRepository)
         {
             _userRepository = userRepository;
+            _projectRepository = projectRepository;
             _membershipRepository = membershipRepository;
         }
 
@@ -75,6 +79,22 @@ namespace TaskManager.API.Services
             }
 
             return user;
+        }
+
+        public async Task<Project> EnsureProjectNotArchivedAsync(Guid projectId)
+        {
+            var project = await _projectRepository.GetProjectByIdAsync(projectId);
+            if (project == null)
+            {
+                throw new GraphQLException("Проєкт не знайдено.");
+            }
+
+            if (project.IsArchived || project.Status == ProjectStatuses.Archived)
+            {
+                throw new GraphQLException("Проєкт в архіві. Будь-які зміни заборонені.");
+            }
+
+            return project;
         }
     }
 }

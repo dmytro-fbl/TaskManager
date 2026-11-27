@@ -71,3 +71,25 @@ export const DELETE_TASK_MUTATION = gql`
     deleteTask(taskId: $taskId)
   }
 `;
+
+export const UPDATE_TASK_ASSIGNMENT = gql`
+    mutation UpdateTaskAssignment(
+        $taskId: UUID!
+        $userId: UUID!
+        $estimatedHours: Decimal!
+        $roleId: UUID
+    ) {
+        updateTaskAssignment(
+            taskId: $taskId
+            userId: $userId
+            estimatedHours: $estimatedHours
+            roleId: $roleId
+        )
+    }
+`;
+
+export const REMOVE_USER_FROM_TASK = gql`
+    mutation RemoveUserFromTask($taskId: UUID!, $userId: UUID!) {
+        removeUserFromTask(taskId: $taskId, userId: $userId)
+    }
+`;

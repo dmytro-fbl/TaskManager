@@ -38,6 +38,7 @@ namespace TaskManager.API.Infrastructure
             {
                 DateTimeOffset dto => dto,
                 DateTime dt => new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc)),
+                DateOnly d => new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)),
                 _ => throw new InvalidCastException($"Cannot convert {value.GetType()} to DateTimeOffset.")
             };
         }

@@ -82,9 +82,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IProjectRepository projectRepository,
             [Service] IAccessService accessService)
         {
-            var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
-            if (currentProject == null || currentProject.Status == ProjectStatuses.Archived)
-                throw new GraphQLException("Цей проєкт архівний або не знайдений.");
+            var currentProject = await accessService.EnsureProjectNotArchivedAsync(projectId);
 
             await accessService.EnsureProjectManagerOrAdminAsync(
                 claimsPrincipal,
@@ -100,14 +98,11 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid projectId,
             Guid memberUserId,
             ClaimsPrincipal claimsPrincipal,
-            [Service] IProjectRepository projectRepository,
             [Service] IProjectMembershipRepository membershipRepository,
             [Service] IAccessService accessService,
             [Service] ITaskRepository taskRepository)
         {
-            var currentProject = await projectRepository.GetProjectByIdAsync(projectId);
-            if (currentProject == null || currentProject.Status == ProjectStatuses.Archived || currentProject.IsArchived)
-                throw new GraphQLException("Цей проєкт архівний або не знайдений.");
+            var currentProject = await accessService.EnsureProjectNotArchivedAsync(projectId);
 
             if (currentProject.OwnerId == memberUserId)
                 throw new GraphQLException("Не можна видалити власника проєкту.");
@@ -138,6 +133,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 throw new GraphQLException("Назва ролі має містити більше 2 символів.");
             }
 
+            await accessService.EnsureProjectNotArchivedAsync(projectId);
             await accessService.EnsureProjectManagerOrAdminAsync(
                 claimsPrincipal,
                 projectId,
@@ -165,6 +161,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (string.IsNullOrWhiteSpace(newName) || newName.Trim().Length < 2)
                 throw new GraphQLException("Назва ролі має містити більше 2 символів.");
 
+            await accessService.EnsureProjectNotArchivedAsync(projectId);
             await accessService.EnsureProjectManagerOrAdminAsync(
                 claimsPrincipal,
                 projectId,
@@ -188,6 +185,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             [Service] IProjectRoleRepository projectRoleRepository,
             [Service] IAccessService accessService)
         {
+            await accessService.EnsureProjectNotArchivedAsync(projectId);
             await accessService.EnsureProjectManagerOrAdminAsync(
                 claimsPrincipal,
                 projectId,

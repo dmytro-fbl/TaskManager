@@ -7,6 +7,7 @@ using TaskManager.API.Models.TasksTables;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
 using TaskManager.API.Repositories.TasksRepository;
+using TaskManager.API.Services;
 
 namespace TaskManager.API.GraphQL.Mutations.Projects
 {
@@ -18,9 +19,9 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             CreateTaskInput input,
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
-            [Service] IProjectRepository projectRepository,
             [Service] IProjectMembershipRepository membershipRepository,
-            [Service] IUserRepository userRepository)
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
         {
             var userId = claimsPrincipal.GetUserId();
             var currentUser = await userRepository.GetUserByIdAsync(userId);
@@ -30,14 +31,7 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                 throw new GraphQLException("Користувача не знайдено.");
             }
 
-            var project = await projectRepository.GetProjectByIdAsync(
-                input.ProjectId
-            );
-
-            if (project == null)
-            {
-                throw new GraphQLException("Проєкт не знайдено.");
-            }
+            await accessService.EnsureProjectNotArchivedAsync(input.ProjectId);
 
             var hasProjectAccess = currentUser.IsAdmin ||
                 await membershipRepository.IsUserInProjectAsync(
@@ -118,20 +112,10 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IProjectMembershipRepository membershipRepository,
-            [Service] IUserRepository userRepository)
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
         {
-            var userIdValue =
-                claimsPrincipal.FindFirst(
-                    ClaimTypes.NameIdentifier
-                )?.Value ??
-                claimsPrincipal.FindFirst("sub")?.Value;
-
-            if (!Guid.TryParse(userIdValue, out var currentUserId))
-            {
-                throw new GraphQLException(
-                    "Не вдалося авторизувати користувача."
-                );
-            }
+            var currentUserId = claimsPrincipal.GetUserId();
 
             var currentUser = await userRepository.GetUserByIdAsync(
                 currentUserId
@@ -152,6 +136,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
                     "Таску не знайдено."
                 );
             }
+
+            await accessService.EnsureProjectNotArchivedAsync(task.ProjectId);
 
             var hasAccess = currentUser.IsAdmin ||
                 await membershipRepository.IsUserInProjectAsync(
@@ -202,7 +188,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IProjectMembershipRepository membershipRepository,
-            [Service] IUserRepository userRepository)
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
         {
             var currentUserId = claimsPrincipal.GetUserId();
 
@@ -210,6 +197,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
 
             if (existingTask == null)
                 throw new GraphQLException("Таску не знайдено.");
+
+            await accessService.EnsureProjectNotArchivedAsync(existingTask.ProjectId);
 
             var currentUser = await userRepository.GetUserByIdAsync(currentUserId);
             if (currentUser == null)
@@ -250,7 +239,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IUserRepository userRepository,
-            [Service] IProjectMembershipRepository membershipRepository)
+            [Service] IProjectMembershipRepository membershipRepository,
+            [Service] IAccessService accessService)
         {
             if (input.HoursSpent <= 0)
                 throw new GraphQLException("Вкажіть коректний час.");
@@ -263,6 +253,9 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             var existingTask = await taskRepository.GetTaskByIdAsync(input.TaskId);
             if (existingTask == null)
                 throw new GraphQLException("Таску не знайдено.");
+
+            await accessService.EnsureProjectNotArchivedAsync(existingTask.ProjectId);
+
             var hasAccess = user.IsAdmin || await membershipRepository.IsUserInProjectAsync(existingTask.ProjectId, currentUserId);
             if (!hasAccess)
                 throw new GraphQLException("У вас немає доступу до цієї таски.");
@@ -275,7 +268,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             UpdateWorkLogInput input,
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
-            [Service] IUserRepository userRepository)
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
         {
             if (input.HoursSpent <= 0)
                 throw new GraphQLException("Кількість годин повинна бути більше 0.");
@@ -289,6 +283,10 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             if (worklog == null)
                 throw new GraphQLException("Запис трекінгу часу не знайдено.");
 
+            var task = await taskRepository.GetTaskByIdAsync(worklog.TaskId);
+            if (task != null)
+                await accessService.EnsureProjectNotArchivedAsync(task.ProjectId);
+
             if (worklog.UserId != currentUserId)
                 throw new GraphQLException("Ви можете редагувати лише власний трекінг часу.");
 
@@ -300,7 +298,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid workLogId,
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
-            [Service] IUserRepository userRepository)
+            [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService)
         {
             var currentUserId = claimsPrincipal.GetUserId();
             var user = await userRepository.GetUserByIdAsync(currentUserId);
@@ -310,6 +309,10 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             var worklog = await taskRepository.GetWorkLogByIdAsync(workLogId);
             if (worklog == null)
                 throw new GraphQLException("Запис трекінгу часу не знайдено.");
+
+            var task = await taskRepository.GetTaskByIdAsync(worklog.TaskId);
+            if (task != null)
+                await accessService.EnsureProjectNotArchivedAsync(task.ProjectId);
 
             if (worklog.UserId != currentUserId && !user.IsAdmin)
                 throw new GraphQLException("Ви можете видаляти лише власний трекінг часу.");
@@ -323,7 +326,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             ClaimsPrincipal claimsPrincipal,
             [Service] ITaskRepository taskRepository,
             [Service] IUserRepository userRepository,
-            [Service] IProjectMembershipRepository membershipRepository)
+            [Service] IProjectMembershipRepository membershipRepository,
+            [Service] IAccessService accessService)
         {
             var userId = claimsPrincipal.GetUserId();
             var currentUser = await userRepository.GetUserByIdAsync(userId);
@@ -336,6 +340,8 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             {
                 throw new GraphQLException("Таску не знайдено.");
             }
+
+            await accessService.EnsureProjectNotArchivedAsync(task.ProjectId);
 
             var hasProjectAccess = currentUser.IsAdmin ||
                 await membershipRepository.IsUserInProjectAsync(

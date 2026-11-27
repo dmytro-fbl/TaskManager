@@ -5,6 +5,7 @@ using TaskManager.API.Extensions;
 using TaskManager.API.Models.Constants;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
+using TaskManager.API.Services;
 
 namespace TaskManager.API.GraphQL.Mutations.Projects
 {
@@ -18,9 +19,11 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             string projectRole,
             Guid? roleLabelId,
             [Service] IProjectMembershipRepository projectRepository,
+            [Service] IAccessService accessService,
             ClaimsPrincipal claimsPrincipal)
         {
             var inviterUserId = claimsPrincipal.GetUserId();
+            await accessService.EnsureProjectNotArchivedAsync(projectId);
 
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -85,9 +88,11 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             string projectRole,
             [Service] IProjectMembershipRepository projectRepository,
             [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService,
             ClaimsPrincipal claimsPrincipal)
         {
             var inviterUserId = claimsPrincipal.GetUserId();
+            await accessService.EnsureProjectNotArchivedAsync(projectId);
 
             if (string.IsNullOrWhiteSpace(email))
             {

@@ -24,19 +24,21 @@ export const UPDATE_PROJECT = gql`
     $title: String!
     $description: String
     $budgetCap: Decimal
+    $deadline: DateTime
   ) {
     updateProject(
       projectId: $projectId
       title: $title
       description: $description
       budgetCap: $budgetCap
+      deadline: $deadline
     )
   }
 `;
 
 export const REMOVE_PROJECT_MEMBER = gql`
-  mutation RemoveProjectMember($projectId: UUID!, $userId: UUID!) {
-    removeProjectMember(projectId: $projectId, userId: $userId)
+  mutation RemoveProjectMember($projectId: UUID!, $memberUserId: UUID!) {
+    removeProjectMember(projectId: $projectId, memberUserId: $memberUserId)
   }
 `;
 

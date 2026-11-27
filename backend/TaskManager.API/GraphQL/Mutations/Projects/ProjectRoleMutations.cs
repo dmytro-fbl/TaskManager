@@ -5,6 +5,7 @@ using TaskManager.API.Extensions;
 using TaskManager.API.Models.Constants;
 using TaskManager.API.Repositories;
 using TaskManager.API.Repositories.ProjectsRepository;
+using TaskManager.API.Services;
 
 namespace TaskManager.API.GraphQL.Mutations.Projects
 {
@@ -19,9 +20,11 @@ namespace TaskManager.API.GraphQL.Mutations.Projects
             Guid? roleLabelId,
             [Service] IProjectMembershipRepository projectRepository,
             [Service] IUserRepository userRepository,
+            [Service] IAccessService accessService,
             ClaimsPrincipal claimsPrincipal)
-        { 
+        {
             var currentUserId = claimsPrincipal.GetUserId();
+            await accessService.EnsureProjectNotArchivedAsync(projectId);
             var currentUser = await userRepository.GetUserByIdAsync(currentUserId);
 
             if (currentUser == null)

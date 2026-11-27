@@ -232,12 +232,16 @@ create table if not exists app.task_comments (
     author_id uuid not null,
     body text not null,
     created_at timestamptz not null default now(),
+    parent_comment_id uuid,
     updated_at timestamptz,
     is_edited boolean not null default false,
+    is_deleted boolean not null default false,
     constraint fk_task_comments_task
         foreign key (task_id) references app.tasks(id) on delete cascade,
     constraint fk_task_comments_author
         foreign key (author_id) references app.users(id) on delete restrict,
+    constraint fk_task_comments_parent
+        foreign key (parent_comment_id) references app.task_comments(id) on delete cascade,
     constraint chk_task_comments_body
         check (char_length(trim(body)) >= 1)
 );

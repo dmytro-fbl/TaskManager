@@ -501,7 +501,14 @@ export const ProjectTasks: React.FC<Props> = ({ projectId, isArchived = false })
                                             className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none w-full sm:w-auto"
                                         >
                                             <option value="">Оберіть людину...</option>
-                                            {memberships.map((m) => <option key={m.userId} value={m.userId}>{m.user.name}</option>)}
+                                            {memberships.map((m) => {
+                                                const alreadyPicked = assignees.some((a, i) => i !== index && a.userId === m.userId);
+                                                return (
+                                                    <option key={m.userId} value={m.userId} disabled={alreadyPicked}>
+                                                        {m.user.name}{alreadyPicked ? " (вже обрано)" : ""}
+                                                    </option>
+                                                );
+                                            })}
                                         </select>
 
                                         <select
