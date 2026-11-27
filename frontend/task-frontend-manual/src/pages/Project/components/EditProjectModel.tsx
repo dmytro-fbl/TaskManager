@@ -17,6 +17,16 @@ interface EditProjectModalProps {
     };
 }
 
+function toDateInputValue(value?: string | null): string {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
 export const EditProjectModal: React.FC<EditProjectModalProps> = ({
                                                                       isOpen,
                                                                       onClose,
@@ -27,13 +37,13 @@ export const EditProjectModal: React.FC<EditProjectModalProps> = ({
     const [description, setDescription] = useState(project.description || '');
     const [budgetCap, setBudgetCap] = useState(project.budgetCap ? project.budgetCap.toString() : '');
 
-    const [deadline, setDeadline] = useState(project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '');
+    const [deadline, setDeadline] = useState(toDateInputValue(project.deadline));
 
     useEffect(() => {
         setTitle(project.title);
         setDescription(project.description || '');
         setBudgetCap(project.budgetCap ? project.budgetCap.toString() : '');
-        setDeadline(project.deadline ? new Date(project.deadline).toISOString().split('T')[0] : '');
+        setDeadline(toDateInputValue(project.deadline));
     }, [project]);
 
     const [updateProject, {loading, error}] = useMutation(UPDATE_PROJECT);
